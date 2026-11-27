@@ -1,0 +1,21 @@
+# Build output
+/build/
+/build-*/
+/dist/
+
+# Anything derived from the original game files: never commit these.
+/extracted/
+/ghidra-project/
+/installers/
+*.gpr
+*.rep/
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+__pycache__/
+
+# Repo-local toolchain (tools/setup_tooling.sh)
+/tools/vendor/
