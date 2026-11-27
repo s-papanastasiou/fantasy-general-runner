@@ -160,6 +160,8 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
     SDL_Renderer* ren = nullptr;
     auto open_window = [&](const char* video_driver) {
         if (video_driver) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, video_driver);
+        SDL_SetHint(SDL_HINT_APP_ID, "fantasy-general-runner");       // Wayland: matches the desktop entry
+        SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");           // the .exe's icon (fg-runner.rc)
         if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) { FG_LOG("SDL video: %s", SDL_GetError()); return false; }
         // High pixel density: on a scaled desktop, draw into real screen
         // pixels rather than letting the compositor stretch the window.

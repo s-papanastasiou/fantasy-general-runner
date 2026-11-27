@@ -22,6 +22,9 @@ elseif(NOT FG_CPU STREQUAL "unicorn")
 endif()
 message(STATUS "CPU backend: ${FG_CPU}")
 
+# Shown by --version and in the log; release builds pass the git tag.
+set(FG_VERSION "dev" CACHE STRING "Version string compiled into the runner")
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(NOT CMAKE_BUILD_TYPE)
@@ -51,6 +54,7 @@ add_executable(fg-runner
   src/cd_extract.cpp
   src/dig_driver.cpp
   src/game_locate.cpp
+  src/log.cpp
 )
 target_include_directories(fg-runner PRIVATE src third_party/stb)
 
@@ -62,6 +66,7 @@ if(NOT WIN32)
   target_link_libraries(fg-runner PRIVATE m)
 endif()
 target_compile_options(fg-runner PRIVATE -Wall -Wextra -Wno-unused-parameter)
+target_compile_definitions(fg-runner PRIVATE FG_VERSION="${FG_VERSION}")
 target_link_libraries(fg-runner PRIVATE PkgConfig::SDL3)
 
 if(FG_CPU STREQUAL "native")
@@ -93,11 +98,25 @@ else()
   endif()
 endif()
 
+# FG_PORTABLE (Linux release builds, tools/release/linux-build.sh): the C++
+# runtime linked in, a static Unicorn, and SDL3 looked up next to the
+# program in lib/ ($ORIGIN), so the binary runs without system packages.
+option(FG_PORTABLE "Linux: self-contained build for a release package" OFF)
+if(FG_PORTABLE AND NOT WIN32)
+  find_package(Threads REQUIRED)
+  target_link_libraries(fg-runner PRIVATE Threads::Threads ${CMAKE_DL_LIBS} rt)
+  target_link_options(fg-runner PRIVATE -static-libgcc -static-libstdc++)
+  set_target_properties(fg-runner PROPERTIES BUILD_RPATH "\$ORIGIN/lib" INSTALL_RPATH "\$ORIGIN/lib")
+endif()
+
 if(WIN32)
   enable_language(RC)
   target_sources(fg-runner PRIVATE win/fg-runner.rc)
   target_compile_definitions(fg-runner PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
   target_link_libraries(fg-runner PRIVATE winmm advapi32)  # timeBeginPeriod; registry
+  # No console window; started from a command prompt it attaches to that
+  # prompt's console (main.cpp). The entry point stays main().
+  target_link_options(fg-runner PRIVATE -mwindows)
   # C/C++ runtime linked in; SDL3.dll and libwinpthread-1.dll ship next to
   # the program (tools/build_windows.sh).
   target_link_options(fg-runner PRIVATE -static-libgcc -static-libstdc++)

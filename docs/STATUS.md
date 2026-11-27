@@ -84,8 +84,19 @@ holding off the timer interrupts that draw the cursor; it now sleeps at
 most 1 ms per poll. Measured: timer interrupts during a fade 361/s with
 gaps under 4 ms (before 242/s, 17 ms). The user confirmed it looks good.
 
-**Windows build** (2026-11-27): `tools/build_windows.sh` makes
-`dist/fg-runner-windows.zip` (MinGW cross-build, Unicorn backend). Under
+**Release packages** (2026-11-28, branch `release-packaging`):
+`tools/build_release.sh` builds the Linux tar.gz (Ubuntu 22.04 container;
+glibc 2.35+, SDL3 bundled) and the Windows zip (Fedora 45 container); the
+GitHub workflow runs it on pull requests (artifact) and `v*` tags
+(GitHub Release). Runner: `--version`, log file in the per-user folder,
+errors in a message box, Windows GUI subsystem and icon. Checked: the
+Linux package runs the headless battle route in bare Ubuntu 22.04 and
+Debian 12 containers with screenshots identical to the Fedora host; the
+Windows package under Wine (log file, `--version` from `wine cmd`).
+Not yet: a real window/sound session from the packages, real Windows.
+
+**Windows build** (2026-11-27): `tools/build_windows.sh` cross-builds
+the Windows package (MinGW, Unicorn backend). Under
 Wine the headless battle route gives the same screenshot as on Linux. Not
 yet tried on real Windows or with a window and sound. Details in
 "Portability" in `docs/RUNNER.md`.
@@ -199,7 +210,6 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
   the Linux `.sh`, which is a zip; the `.exe` via `innoextract`).
 - Windows: test the zip on real Windows 10/11 (window, sound, mouse
   capture, save/load into the GOG folder's SAVES, non-ASCII user names).
-  Possible: a GUI-subsystem build without the console window, an icon.
   macOS not started. Smaller: verify `ins`/`outs` under Unicorn; `uc_close` on exit.
 - Publishing: a **private** GitHub repository, `fantasy-general-runner`
   (2026-11-27), `main` starting from a single commit of the code at that

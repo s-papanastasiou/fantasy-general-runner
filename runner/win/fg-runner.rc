@@ -1,3 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include <winuser.h>
 CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "fg-runner.manifest"
+// The program icon (tools/make_icon.py); id 1 is also used for the window
+// (SDL_HINT_WINDOWS_INTRESOURCE_ICON in ui.cpp).
+1 ICON "fg-runner.ico"

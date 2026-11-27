@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Cross-compile the runner for 64-bit Windows (Unicorn CPU backend) and
-# package it as dist/fg-runner-windows.zip.
+# package it as dist/fantasy-general-runner-VERSION-windows-x64.zip.
 #
-#   tools/build_windows.sh
+#   tools/build_windows.sh [VERSION]      (default: dev)
 #
 # Host packages (Fedora): mingw64-gcc-c++ mingw64-SDL3 cmake ninja-build zip.
 # Unicorn is not packaged for MinGW: its source (pinned, SHA-256 verified) is
@@ -13,9 +13,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENDOR="$ROOT/tools/vendor"
 DL="$VENDOR/downloads"
+VERSION="${1:-dev}"
 BUILD="$ROOT/build-windows"
 DIST="$ROOT/dist"
-PKG="$DIST/fg-runner-windows"
+NAME="fantasy-general-runner-$VERSION-windows-x64"
+PKG="$DIST/$NAME"
 MINGW_BIN=/usr/x86_64-w64-mingw32/sys-root/mingw/bin
 
 UNICORN_VER="2.1.4"
@@ -54,23 +56,28 @@ if [[ ! -f "$UNICORN_PREFIX/lib/libunicorn.a" ]]; then
 fi
 
 # --- runner ----------------------------------------------------------------
-log "building fg-runner.exe"
-if [[ ! -f "$BUILD/build.ninja" ]]; then
-    cmake -S "$ROOT/runner" -B "$BUILD" -G Ninja \
-        -DCMAKE_TOOLCHAIN_FILE="$ROOT/runner/cmake/toolchain-mingw64.cmake" -DCMAKE_BUILD_TYPE=Release \
-        -DFG_CPU=unicorn -DFG_UNICORN_ROOT="$UNICORN_PREFIX" >/dev/null
+log "building fg-runner.exe $VERSION"
+# A build folder configured for another checkout location (host vs. the
+# release container's /src) cannot be reused.
+if [[ -f "$BUILD/CMakeCache.txt" ]] && ! grep -qx "CMAKE_HOME_DIRECTORY:INTERNAL=$ROOT/runner" "$BUILD/CMakeCache.txt"; then
+    rm -rf "$BUILD"
 fi
+cmake -S "$ROOT/runner" -B "$BUILD" -G Ninja \
+    -DCMAKE_TOOLCHAIN_FILE="$ROOT/runner/cmake/toolchain-mingw64.cmake" -DCMAKE_BUILD_TYPE=Release \
+    -DFG_CPU=unicorn -DFG_UNICORN_ROOT="$UNICORN_PREFIX" -DFG_VERSION="$VERSION" >/dev/null
 cmake --build "$BUILD" >/dev/null
 
 # --- package ---------------------------------------------------------------
-log "packaging $DIST/fg-runner-windows.zip"
+log "packaging $DIST/$NAME.zip"
 rm -rf "$PKG"
 mkdir -p "$PKG"
 x86_64-w64-mingw32-strip -o "$PKG/fg-runner.exe" "$BUILD/fg-runner.exe"
 cp "$MINGW_BIN/SDL3.dll" "$MINGW_BIN/libwinpthread-1.dll" "$PKG/"
 cp "$ROOT/LICENSE" "$PKG/LICENSE.txt"
+cp "$VENDOR/unicorn-src/COPYING" "$PKG/LICENSE-Unicorn.txt"
+cp /usr/share/licenses/mingw64-SDL3/LICENSE.txt "$PKG/LICENSE-SDL3.txt"
 cp "$ROOT/runner/win/README-windows.txt" "$PKG/README.txt"
-sed -i 's/$/\r/' "$PKG/README.txt" "$PKG/LICENSE.txt"
-rm -f "$DIST/fg-runner-windows.zip"
-(cd "$DIST" && zip -qr fg-runner-windows.zip fg-runner-windows)
-log "done: $DIST/fg-runner-windows.zip"
+sed -i 's/$/\r/' "$PKG"/*.txt
+rm -f "$DIST/$NAME.zip"
+(cd "$DIST" && zip -qr "$NAME.zip" "$NAME")
+log "done: $DIST/$NAME.zip"

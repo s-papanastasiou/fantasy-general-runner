@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Build the Linux and Windows release packages (tools/build_release.sh, in
+# containers: Ubuntu 22.04 and Fedora 45).
+#   - pull requests and manual runs: build, and attach the packages to the
+#     run as an artifact for testing
+#   - a pushed tag v*: build and publish a GitHub Release with the packages
+name: Release packages
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # creating releases
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CONTAINER_ENGINE: docker
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            v="${GITHUB_REF_NAME#v}"
+          else
+            v="0.0.0-dev.${GITHUB_SHA::7}"
+          fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+          echo "version: $v"
+
+      - name: Cache dependency downloads and builds
+        uses: actions/cache@v6
+        with:
+          path: |
+            tools/vendor/downloads
+            tools/vendor/linux-release/sdl3-[0-9]*
+            tools/vendor/linux-release/sdl3-src
+            tools/vendor/linux-release/unicorn-[0-9]*
+            tools/vendor/linux-release/unicorn-src
+            tools/vendor/unicorn-mingw64
+            tools/vendor/unicorn-src
+          key: release-deps-${{ hashFiles('tools/release/*.sh', 'tools/build_windows.sh') }}
+
+      - name: Build
+        run: tools/build_release.sh "$VERSION"
+
+      - name: Upload packages (test builds)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: fantasy-general-runner-${{ env.VERSION }}
+          path: |
+            dist/fantasy-general-runner-${{ env.VERSION }}-*
+            dist/SHA256SUMS-${{ env.VERSION }}.txt
+          retention-days: 14
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/fantasy-general-runner-$VERSION-linux-x86_64.tar.gz" \
+            "dist/fantasy-general-runner-$VERSION-windows-x64.zip" \
+            "dist/SHA256SUMS-$VERSION.txt" \
+            --repo "$GITHUB_REPOSITORY" --title "Fantasy General runner $VERSION" \
+            --notes-file tools/release/release-notes.md

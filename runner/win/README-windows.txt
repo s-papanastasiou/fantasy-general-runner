@@ -32,8 +32,11 @@ existing saves keep working). If that folder is missing or cannot be
 written to, they go to %APPDATA%\fg-runner\drive-c instead.
 
 On the first start it unpacks the game CD's data track (game.gog) into
-%APPDATA%\fg-runner\cd; later starts reuse it. The console window shows
-the runner's messages.
+%APPDATA%\fg-runner\cd; later starts reuse it.
+
+If something goes wrong, the runner shows a message and writes details to
+%APPDATA%\fg-runner\fg-runner.log. Started from a command prompt, it also
+prints its messages there.
 
 Keys
 ----
@@ -59,6 +62,7 @@ Options
 --no-sound             no sound effects
 --cd-dir DIR           use an already extracted CD data track as drive D:
 --save-dir DIR         keep saved games in DIR
+--version              print the version (from a command prompt)
 
 Licence
 -------

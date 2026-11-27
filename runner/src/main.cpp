@@ -103,9 +103,30 @@ bool build_psp(Machine& m, const std::string& args) {
     return true;
 }
 
+#ifndef FG_VERSION
+#define FG_VERSION "dev"
+#endif
+
+// The log file: <pref>/fg-runner.log (~/.local/share/fg-runner/,
+// %APPDATA%\fg-runner\), rewritten each run.
+void open_log() {
+    if (char* pref = SDL_GetPrefPath("", "fg-runner")) {
+        log_open(std::string(pref) + "fg-runner.log");
+        SDL_free(pref);
+    }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    // A GUI-subsystem program has no console; started from a command prompt,
+    // write to that prompt's console.
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        std::freopen("CONOUT$", "w", stdout);
+        std::freopen("CONOUT$", "w", stderr);
+    }
+#endif
     std::string game_dir, cd_dir, save_dir;
     bool save_dir_given = false;
     std::string game_args = "n";
@@ -137,12 +158,16 @@ int main(int argc, char** argv) {
         else if (a == "--ai-move-ms" && i + 1 < argc) ai_step_ms = std::max(0.0, std::atof(argv[++i]));
         else if (a == "--ai-view-ms" && i + 1 < argc) ai_view_ms = std::max(0.0, std::atof(argv[++i]));
         else if (a == "--scale" && i + 1 < argc) ui.scale = std::max(1, std::atoi(argv[++i]));
+        else if (a == "--version") {
+            std::printf("fg-runner %s\n", FG_VERSION);
+            return 0;
+        }
         else if (a == "--") {
             game_args.clear();
             for (++i; i < argc; ++i) game_args += (game_args.empty() ? "" : " ") + std::string(argv[i]);
         } else {
             std::fprintf(stderr,
-                         "usage: %s [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [--scale N] [--window|--fullscreen (default)] [--headless] [--mute|--audio] [--no-sound]\n"
+                         "usage: %s [--version] [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [--scale N] [--window|--fullscreen (default)] [--headless] [--mute|--audio] [--no-sound]\n"
                          "          [--scaling integer|fit (default integer: exact pixels)]\n"
                          "          [--scroll-ms MS (battle-map scroll step interval, default 120)]\n"
                          "          [--original-scrolling (sides scroll diagonally, as in the original game)]\n"
@@ -156,12 +181,18 @@ int main(int argc, char** argv) {
 #ifdef _WIN32
     timeBeginPeriod(1);  // 1 ms sleeps and timer ticks instead of ~15.6 ms
 #endif
+    open_log();
+    FG_LOG("fg-runner %s (%s)", FG_VERSION, SDL_GetPlatform());
+    // A failure before the game runs: log it and tell the player.
+    auto fail = [&](const std::string& msg) {
+        FG_LOG("%s", msg.c_str());
+        set_error(msg);
+        report_errors(ui.headless);
+        return 1;
+    };
     if (!game_dir.empty()) {
         std::string d = game_dir_in(game_dir);  // the install folder will do, too
-        if (d.empty()) {
-            FG_LOG("EXE\\BARENA.EXE not found in %s", game_dir.c_str());
-            return 1;
-        }
+        if (d.empty()) return fail("Fantasy General (EXE\\BARENA.EXE) was not found in " + game_dir + ".");
         game_dir = d;
     } else {
         game_dir = locate_game_dir();
@@ -170,9 +201,9 @@ int main(int argc, char** argv) {
             if (!game_dir.empty()) remember_game_dir(game_dir);
         }
         if (game_dir.empty()) {
-            FG_LOG("Fantasy General not found: install it from GOG.com, then start the runner and "
-                   "choose its folder, or pass it with --game-dir");
-            return 1;
+            if (!ui.headless) return 1;  // the player cancelled the folder dialog
+            return fail("Fantasy General not found: install it from GOG.com, then start the runner and "
+                        "choose its folder, or pass it with --game-dir.");
         }
     }
     FG_LOG("game directory: %s", game_dir.c_str());
@@ -188,10 +219,10 @@ int main(int argc, char** argv) {
     static Machine machine;
     Machine& m = machine;
     g_machine = &m;
-    if (!m.as.init(kCpuMapsAllMemory)) return 1;
+    if (!m.as.init(kCpuMapsAllMemory)) return fail("Cannot reserve memory for the game.");
     FG_LOG("game address space at host %#llx; CPU backend: %s",
            static_cast<unsigned long long>(m.as.host_base()), kCpuBackendName);
-    if (!cpu_init()) return 1;
+    if (!cpu_init()) return fail("Cannot start the CPU emulator.");
 
     m.fs = std::make_unique<DosFs>();
     m.fs->map_drive('C', game_dir);
@@ -204,12 +235,12 @@ int main(int argc, char** argv) {
         m.fs->hide("MDI.INI");
     }
     m.fs->set_current_drive('C');
-    if (m.fs->chdir("\\EXE")) { FG_LOG("no EXE directory in %s", game_dir.c_str()); return 1; }
+    if (m.fs->chdir("\\EXE")) return fail("No EXE folder in " + game_dir + ".");
 
     std::string exe;
-    if (m.fs->resolve("C:\\EXE\\BARENA.EXE", exe)) { FG_LOG("BARENA.EXE not found in %s", game_dir.c_str()); return 1; }
+    if (m.fs->resolve("C:\\EXE\\BARENA.EXE", exe)) return fail("BARENA.EXE not found in " + game_dir + ".");
     std::string err;
-    if (!load_le(exe, m.as, AddressSpace::kObjectBias, m.image, err)) { FG_LOG("%s", err.c_str()); return 1; }
+    if (!load_le(exe, m.as, AddressSpace::kObjectBias, m.image, err)) return fail("Cannot load the game: " + err);
     for (size_t i = 0; i < m.image.objects.size(); ++i) {
         const auto& o = m.image.objects[i];
         FG_LOG("object %zu: %08x-%08x (ghidra %08x)", i + 1, o.load_base, o.load_base + o.virtual_size,
@@ -220,7 +251,7 @@ int main(int argc, char** argv) {
     init_bios_data_area(m.as);
     m.code_sel = m.ldt.make(0, 0xFFFFFFFF, true);
     m.data_sel = m.ldt.make(0, 0xFFFFFFFF, false);
-    if (!m.code_sel || !m.data_sel || !build_psp(m, game_args)) { FG_LOG("cannot set up descriptors"); return 1; }
+    if (!m.code_sel || !m.data_sel || !build_psp(m, game_args)) return fail("Cannot set up the game's memory segments.");
     FG_LOG("selectors: code %04x data %04x psp %04x env %04x", m.code_sel, m.data_sel, m.psp_sel, m.env_sel);
 
     install_interrupt_stubs();
@@ -265,6 +296,8 @@ int main(int argc, char** argv) {
     }); };
     if (!run_ui(ui, game_done, start_game_thread)) {
         FG_LOG("no window could be opened; use --headless to run without one");
+        set_error("No window could be opened for the game (see the log for SDL's reason).");
+        report_errors(false);
         std::fflush(nullptr);
         std::_Exit(1);
     }
@@ -278,6 +311,7 @@ int main(int argc, char** argv) {
     if (game.joinable()) game.join();
     g_dig.shutdown();
     g_cd_audio.shutdown();
+    report_errors(ui.headless);  // e.g. a FATAL stop of the game
     SDL_Quit();
     return m.exit_code;
 }

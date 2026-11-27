@@ -398,7 +398,8 @@ Decision (2026-11-26): Unicorn, implemented as a second backend (see "CPU
 backends"); the project is licensed GPL-2.0-or-later.
 
 **Windows (2026-11-27):** `tools/build_windows.sh` cross-compiles with
-MinGW-w64 and packages `dist/fg-runner-windows.zip`. Platform notes:
+MinGW-w64 and packages `dist/fantasy-general-runner-VERSION-windows-x64.zip`
+(release builds: `tools/build_release.sh`, see the README). Platform notes:
 - Game memory: `VirtualAlloc` (reserve + commit, touched pages only);
   freeing decommits and recommits so the memory reads as zeros.
 - Files are opened with `O_BINARY` (no line-ending translation).
@@ -418,7 +419,11 @@ MinGW-w64 and packages `dist/fg-runner-windows.zip`. Platform notes:
 - The game folder is found through the GOG registry key or asked for with
   a folder dialog (`game_locate.cpp`; see "Finding the game" in
   `docs/STATUS.md`).
-- It is a console program: the console shows the runner's log.
+- It is a GUI-subsystem program (`-mwindows`, entry point still `main`):
+  no console window. Started from a command prompt it attaches to that
+  console (`AttachConsole(ATTACH_PARENT_PROCESS)`); otherwise the log is
+  in `%APPDATA%\fg-runner\fg-runner.log`. Icon: resource 1 (`fg-runner.rc`),
+  also used for the window (`SDL_HINT_WINDOWS_INTRESOURCE_ICON`).
 Tested under Wine only (headless battle route, identical screenshots).
 macOS: not done (would need an ARM64/x86-64 build with SDL3 and Unicorn;
 the code has no Linux-only parts left in the Unicorn configuration).

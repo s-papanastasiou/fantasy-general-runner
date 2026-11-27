@@ -104,21 +104,47 @@ music (the `MUSIC/*.ogg` tracks) and sound effects (Miles mixing natively
 into an emulated SB16 driver). Smacker videos, battles and save/load are
 not checked yet (the intro Smacker video plays).
 
-## Windows build
+## Release packages
+
+Players download a ready-to-run package from the repository's GitHub
+Releases. Both packages are built in containers, locally or on GitHub:
 
 ```sh
-tools/build_windows.sh       # -> dist/fg-runner-windows.zip (64-bit, Unicorn backend)
+tools/build_release.sh [VERSION]   # needs Podman or Docker; default version from `git describe`
+# -> dist/fantasy-general-runner-VERSION-linux-x86_64.tar.gz
+#    dist/fantasy-general-runner-VERSION-windows-x64.zip
+#    dist/SHA256SUMS-VERSION.txt
 ```
 
-Cross-compiled on Linux with MinGW-w64 (Fedora: `mingw64-gcc-c++
-mingw64-SDL3 zip`); Unicorn's source is downloaded (pinned, checksummed)
-and built statically. The zip holds `fg-runner.exe`, `SDL3.dll`,
-`libwinpthread-1.dll`, the licence and a player README
-(`runner/win/README-windows.txt`). On Windows the runner finds the GOG
-install by itself (see "Getting the game") and unpacks the CD data track from
-`game.gog` into `%APPDATA%\fg-runner\cd` on first start. Tested under
-Wine (headless battle route, identical to Linux); not yet on real Windows.
-Distributing the zip means offering the source (GPL).
+- **Linux** (`tools/release/linux-build.sh`, Ubuntu 22.04 container):
+  `fg-runner` with the C++ runtime and Unicorn linked in, SDL3 bundled in
+  `lib/` (found through RPATH `$ORIGIN/lib`), icon,
+  `install-desktop-entry.sh` (menu entry) and a player README
+  (`runner/linux/README-linux.txt`). Needs only glibc 2.35 or newer; SDL
+  loads X11/Wayland/PipeWire/PulseAudio/ALSA from the system at run time.
+- **Windows** (`tools/release/windows-build.sh`, Fedora 45 container, which
+  calls `tools/build_windows.sh`): MinGW-w64 cross-build, Unicorn static;
+  `fg-runner.exe` (GUI program with an icon; from a command prompt it
+  prints to that console), `SDL3.dll`, `libwinpthread-1.dll` and a player
+  README (`runner/win/README-windows.txt`). `tools/build_windows.sh
+  [VERSION]` also works directly on a Fedora host (`mingw64-gcc-c++
+  mingw64-SDL3 zip`).
+
+Both write a log to `fg-runner.log` in the per-user folder
+(`~/.local/share/fg-runner/`, `%APPDATA%\fg-runner\`) and show errors in a
+message box. Dependencies are pinned and checksummed (SDL 3.4.20 for Linux,
+Unicorn 2.1.4); `tools/make_icon.py` draws the icon.
+
+**GitHub Actions** (`.github/workflows/release.yml`) runs the same script:
+pull requests and manual runs attach the packages to the run as an
+artifact; pushing a tag `vX.Y.Z` publishes a GitHub Release with both
+packages and the checksums (notes: `tools/release/release-notes.md`).
+
+```sh
+git tag v0.5.0 && git push origin v0.5.0    # build and publish release 0.5.0
+```
+
+Distributing the packages means offering the source (GPL).
 
 ## Setup
 
