@@ -211,18 +211,20 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
 - Windows: test the zip on real Windows 10/11 (window, sound, mouse
   capture, save/load into the GOG folder's SAVES, non-ASCII user names).
   macOS not started. Smaller: verify `ins`/`outs` under Unicorn; `uc_close` on exit.
-- Publishing: a **private** GitHub repository, `fantasy-general-runner`
-  (2026-11-27), `main` starting from a single commit of the code at that
-  point; the earlier local history was not published (kept locally on the
-  branch `pre-github-history`). Before ever making it public:
-  `docs/NOTES.md` and the Ghidra notes describe game internals (without
-  game code); `runner/src/input.cpp` embeds the game's 18-byte mouse
-  routine as a match pattern, which could be loosened; `docs/screenshots/`
-  holds three screenshots of the game's artwork (for the README). The
-  runner and tools contain no game code and are licensed GPL-2.0-or-later
-  (`LICENSE`; SPDX headers in each file; stb_vorbis keeps its own licence;
-  `tools/ghidra/x86watcom.cspec` is untagged because it may derive from
-  Ghidra's Apache-2.0 specs).
+- Publishing: **public** on GitHub, `s-papanastasiou/fantasy-general-runner`
+  (2026-11-28). History starts from one commit of the code as of
+  2026-11-27; the earlier local history is only on the local branch
+  `pre-github-history` (never push it: it carries the personal email).
+  Commits use the GitHub no-reply address (set in this repo's git config).
+  Before going public the repo was recreated so that no reachable commit
+  carries the personal email; the first private copy is
+  `fantasy-general-runner-old` (private; can be deleted). Kept on purpose:
+  the README screenshots (game artwork), `docs/NOTES.md` (game internals,
+  no game code), the 18-byte mouse routine pattern in `runner/src/input.cpp`.
+  The runner and tools contain no game code and are licensed
+  GPL-2.0-or-later (`LICENSE`; SPDX headers in each file; stb_vorbis keeps
+  its own licence; `tools/ghidra/x86watcom.cspec` is untagged because it
+  may derive from Ghidra's Apache-2.0 specs).
 
 - Play-test battles, save/load, scenario/arena modes, full campaign.
 - Unidentified code block `0x48d53`-`0x4cc60` (28 functions; probably
