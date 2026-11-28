@@ -73,7 +73,9 @@ The game starts fullscreen (`--window` starts it in a window instead);
 Alt+Enter switches between the two. The window is resizable and
 aspect-correct. F12 saves
 `fg-screenshot.png`. Mouse: captured (kept on the game image) in fullscreen
-and after a click into a window; Ctrl+F10 releases or captures it. On the
+and after a click into a window; Ctrl+F10 releases or captures it.
+Ctrl+F11 switches between integer scaling (exact pixels, black borders)
+and fit scaling (fills the screen, uneven pixels). On the
 battle map the arrow keys scroll too (two at once diagonally), like the
 pointer at the screen edge.
 Useful options (after `tools/run.sh`):
@@ -82,6 +84,7 @@ Useful options (after `tools/run.sh`):
 |---|---|
 | `--window` | start in a window instead of fullscreen |
 | `--scale N` | window size (640×480 × N) |
+| `--scaling integer\|fit` | integer: exact pixels with black borders (default); fit: fills the screen, uneven pixels. Ctrl+F11 switches while running |
 | `--headless --screenshot F.png --screenshot-after S` | no window; save the screen after S seconds |
 | `--events "6 key esc; 15 click 548 400"` | scripted input (keys, clicks) for automated checks |
 | `--mute` / `--audio` | no audio / audio even when headless (default: on with a window) |

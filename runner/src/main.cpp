@@ -168,7 +168,7 @@ int main(int argc, char** argv) {
         } else {
             std::fprintf(stderr,
                          "usage: %s [--version] [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [--scale N] [--window|--fullscreen (default)] [--headless] [--mute|--audio] [--no-sound]\n"
-                         "          [--scaling integer|fit (default integer: exact pixels)]\n"
+                         "          [--scaling integer|fit (default integer: exact pixels; Ctrl+F11 switches)]\n"
                          "          [--scroll-ms MS (battle-map scroll step interval, default 120)]\n"
                          "          [--original-scrolling (sides scroll diagonally, as in the original game)]\n"
                          "          [--ai-move-ms MS (computer's unit moves: time per pixel, default 10; 0 = unpaced)]\n"

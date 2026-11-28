@@ -311,7 +311,8 @@ stretch it. Fullscreen is borderless desktop fullscreen at the monitor's
 native resolution, with the same integer scaling: changing the display mode
 would not help, since an LCD's own scaler resamples any non-native mode
 (and Wayland only emulates mode changes). `--scaling fit` fills the screen at
-4:3 with uneven pixel sizes. 640x400 modes (only the brief text screen at
+4:3 with uneven pixel sizes. Ctrl+F11 switches between the two while
+running (back to integer, a window snaps to a multiple at once). 640x400 modes (only the brief text screen at
 start) are stretched to 4:3 like a CRT, so their pixels cannot be exact.
 
 ## Libraries that may be replaced wholesale instead of emulated

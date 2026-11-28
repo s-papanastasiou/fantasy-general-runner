@@ -195,7 +195,9 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
         if (d <= 0) d = 1;
         return std::max(1, std::min(int(r.w * d) / 640, int(r.h * d) / 480));
     };
-    if (opt.integer_scale) set_window_pixels(std::min(opt.scale, max_window_multiple()));
+    // Ctrl+F11 switches between integer and fit scaling while running.
+    bool integer_scale = opt.integer_scale;
+    if (integer_scale) set_window_pixels(std::min(opt.scale, max_window_multiple()));
     bool fullscreen = opt.fullscreen;
     if (fullscreen) SDL_SetWindowFullscreen(win, true);
     // After the user resizes the window, snap it to a multiple of 640x480 once
@@ -216,6 +218,12 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
     SDL_SetRenderVSync(ren, 1);
     SDL_Texture* tex = nullptr;
     int tex_w = 0, tex_h = 0;
+    // 640x400 and 320x200 are shown at 4:3 like a CRT would.
+    auto set_presentation = [&] {
+        SDL_SetRenderLogicalPresentation(ren, tex_w, tex_w * 3 / 4,
+                                         integer_scale ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
+                                                       : SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    };
     Frame frame;
     std::vector<uint32_t> uploaded;  // pixels last copied into `tex`
     // Without working vsync (some drivers, software rendering, hidden
@@ -273,6 +281,19 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
                     if (!e.key.repeat) captured = !captured;
                     break;  // not passed to the game
                 }
+                if (e.key.key == SDLK_F11 && (e.key.mod & SDL_KMOD_CTRL)) {
+                    if (!e.key.repeat) {
+                        integer_scale = !integer_scale;
+                        if (tex_w) set_presentation();
+                        // Back to integer in a window: snap it to a multiple of 640x480 now.
+                        if (integer_scale) {
+                            snap_pending = true;
+                            snap_at = clock::now();
+                            refused_w = refused_h = -1;
+                        }
+                    }
+                    break;  // not passed to the game
+                }
                 if (uint16_t code = bios_key(e.key)) g_input.key(code);
                 break;
             case SDL_EVENT_MOUSE_MOTION:
@@ -298,7 +319,7 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
             bool maximized = SDL_GetWindowFlags(win) & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_FULLSCREEN);
             int k = std::max(1, int(std::min(pw / 640.0, ph / 480.0) + 0.5));
             k = std::min(k, max_window_multiple());
-            if (opt.integer_scale && !maximized && (pw != 640 * k || ph != 480 * k)) {
+            if (integer_scale && !maximized && (pw != 640 * k || ph != 480 * k)) {
                 if (pw == refused_w && ph == refused_h) {
                     refused_w = refused_h = -1;  // the window manager kept its size: accept it
                 } else {
@@ -315,13 +336,9 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
             tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, frame.width,
                                     frame.height);
             SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
-            // 640x400 and 320x200 are shown at 4:3 like a CRT would.
-            int logical_h = frame.width * 3 / 4;
-            SDL_SetRenderLogicalPresentation(ren, frame.width, logical_h,
-                                             opt.integer_scale ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
-                                                               : SDL_LOGICAL_PRESENTATION_LETTERBOX);
             tex_w = frame.width;
             tex_h = frame.height;
+            set_presentation();
             uploaded.clear();
         }
         {  // Show the current scale in the title bar (and log it).
@@ -329,7 +346,7 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
             SDL_GetCurrentRenderOutputSize(ren, &ow, &oh);
             double sx = double(ow) / tex_w, sy = double(oh) / (tex_w * 3 / 4);
             char buf[96];
-            if (opt.integer_scale)
+            if (integer_scale)
                 std::snprintf(buf, sizeof buf, "%dx, exact pixels", std::max(1, int(std::min(sx, sy))));
             else
                 std::snprintf(buf, sizeof buf, "%.2fx, uneven pixels", std::min(sx, sy));
