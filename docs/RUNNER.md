@@ -36,7 +36,10 @@ port 40h. When the virtual IF is set, the runner saves the context, pushes
 an iret frame returning to a trampoline (`int FEh` at `0x600`) and jumps
 to the game's int 08h handler; the trampoline comes back to the runner and
 the context is restored exactly. Ticks arriving with IF clear are
-delivered on `sti` or at interrupt return. Unhooked vectors point at an
+delivered on `sti` or at interrupt return, and never while the previous
+tick's handler is still running (even after it re-enables interrupts):
+the real PIC never produces such bursts, and Miles' handler is not
+re-entrant. Up to 4 late ticks stay queued and follow one by one. Unhooked vectors point at an
 `iretd` stub (`0x610`); int 08h's default (`0x618`) also advances the BIOS
 tick count at `0x46c`.
 

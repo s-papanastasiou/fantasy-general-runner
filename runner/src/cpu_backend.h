@@ -39,7 +39,7 @@ void set_timer_rate(double hz);
 void handle_gp(Cpu& cpu);
 // A timer tick arrived (any thread, async-signal-safe): count it.
 void timer_tick();
-bool timer_pending();
+bool timer_pending();  // a tick is waiting and none is being handled (game thread)
 // Deliver counted timer ticks if the game can take an interrupt now.
 void deliver_pending(Cpu& cpu);
 
