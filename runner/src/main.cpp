@@ -137,6 +137,7 @@ int main(int argc, char** argv) {
     bool original_scrolling = false;
     double ai_step_ms = 10;
     double ai_view_ms = 200;
+    double music_volume = 100;  // percent
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         if (a == "--game-dir" && i + 1 < argc) game_dir = argv[++i];
@@ -157,6 +158,7 @@ int main(int argc, char** argv) {
         else if (a == "--original-scrolling") original_scrolling = true;
         else if (a == "--ai-move-ms" && i + 1 < argc) ai_step_ms = std::max(0.0, std::atof(argv[++i]));
         else if (a == "--ai-view-ms" && i + 1 < argc) ai_view_ms = std::max(0.0, std::atof(argv[++i]));
+        else if (a == "--music-volume" && i + 1 < argc) music_volume = std::clamp(std::atof(argv[++i]), 0.0, 100.0);
         else if (a == "--scale" && i + 1 < argc) ui.scale = std::max(1, std::atoi(argv[++i]));
         else if (a == "--version") {
             std::printf("fg-runner %s\n", FG_VERSION);
@@ -168,6 +170,7 @@ int main(int argc, char** argv) {
         } else {
             std::fprintf(stderr,
                          "usage: %s [--version] [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [--scale N] [--window|--fullscreen (default)] [--headless] [--mute|--audio] [--no-sound]\n"
+                         "          [--music-volume PERCENT (CD music, 0-100, default 100; sound effects unchanged)]\n"
                          "          [--scaling integer|fit (default integer: exact pixels; Ctrl+F11 switches)]\n"
                          "          [--scroll-ms MS (battle-map scroll step interval, default 120)]\n"
                          "          [--original-scrolling (sides scroll diagonally, as in the original game)]\n"
@@ -277,7 +280,7 @@ int main(int argc, char** argv) {
         SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
         SDL_InitSubSystem(SDL_INIT_AUDIO);
     }
-    if (g_cdrom.present()) g_cd_audio.init(g_cdrom.tracks());
+    if (g_cdrom.present()) g_cd_audio.init(g_cdrom.tracks(), float(music_volume / 100));
     g_dig.init();
 
     // The game runs on its own thread; the main thread owns the SDL window.
