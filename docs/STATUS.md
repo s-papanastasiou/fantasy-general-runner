@@ -164,6 +164,16 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
 
 ## Lessons that are not obvious from the code
 
+- **One timer interrupt at a time** (fixed 2026-11-28): Miles' timer
+  handler sends EOI and runs `sti` at once (`0x579a7`), then works on a
+  stack at a fixed address. The runner queued up to 4 ticks when the host
+  timer ran late (Windows/Wine: bursts every ~12 ms) and delivered the next
+  right after that `sti`, nesting the handler on itself; under Wine about
+  one quit in two crashed (`0x4b87b`, or DOS memory at `0x1644`). Now no
+  tick is delivered while the previous one's handler runs; queued ticks
+  follow one by one (still 354-360/s under Wine). Found with a ring buffer
+  of the last interrupts dumped at the crash: `FG_TRACE` changed the timing
+  enough to hide it.
 - **Audio locking:** SDL holds an audio stream's lock while running its
   callback. Use that lock (`audio_lock.h`) for state shared with the
   callback; a separate mutex deadlocks against `SDL_SetAudioStreamFormat`.
@@ -205,10 +215,6 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
 
 ## Open items
 
-- Quitting under Wine (Windows build) fails about one run in two, at
-  `0x4b87b` (a buffer clear in the unidentified block `0x48d53`-`0x4cc60`
-  writing through a pointer that holds text) or in DOS memory at `0x1644`;
-  v0.6.0 does the same; Linux 8 of 8 clean. Not investigated yet.
 - Maybe later: read the game straight from a downloaded installer (easy for
   the Linux `.sh`, which is a zip; the `.exe` via `innoextract`).
 - Windows: test the zip on real Windows 10/11 (window, sound, mouse

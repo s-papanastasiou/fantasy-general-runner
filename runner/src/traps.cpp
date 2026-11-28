@@ -11,6 +11,17 @@
 // interrupted context, pushes an iret frame that returns to a trampoline
 // (`int FEh` in DOS memory) and jumps to the game's handler; the trampoline
 // traps back here and the saved context is restored exactly.
+//
+// One timer interrupt at a time: a tick is not delivered while the handler
+// of the previous one is still running, even if it has re-enabled
+// interrupts. Ticks that arrive meanwhile stay counted and follow one by
+// one. The real PIC holds at most one pending tick and the next comes a
+// full period later, so handlers never see a burst; Miles' handler
+// sends EOI and executes `sti` at 0x579a7, then runs its callbacks on a
+// stack at a fixed address, so a tick delivered right after its `sti` (the runner
+// had several queued whenever the host timer ran late, as under Windows)
+// restarted it on top of itself and corrupted its state (seen as crashes
+// when quitting under Wine, at 0x4b87b).
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -350,11 +361,11 @@ void timer_tick() {
     while (n < 4 && !g_pending_irq0.compare_exchange_weak(n, n + 1, std::memory_order_relaxed)) {}
 }
 
-bool timer_pending() { return g_pending_irq0.load(std::memory_order_relaxed) > 0; }
+bool timer_pending() { return g_pending_irq0.load(std::memory_order_relaxed) > 0 && g_isr_stack.empty(); }
 
 void deliver_pending(Cpu& cpu) {
     Machine& m = *g_machine;
-    if (!m.virtual_if || cpu.cs() != m.code_sel) return;
+    if (!m.virtual_if || cpu.cs() != m.code_sel || !g_isr_stack.empty()) return;
     int n = g_pending_irq0.load(std::memory_order_relaxed);
     while (n > 0) {
         if (g_pending_irq0.compare_exchange_weak(n, n - 1, std::memory_order_relaxed)) {
