@@ -13,7 +13,7 @@ namespace fg {
 
 CdAudio g_cd_audio;
 
-bool CdAudio::init(const std::vector<CdTrack>& tracks) {
+bool CdAudio::init(const std::vector<CdTrack>& tracks, float music_volume) {
     tracks_ = tracks;  // before the stream exists, so no callback can run yet
     SDL_AudioSpec spec{SDL_AUDIO_F32, 2, 44100};
     stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &CdAudio::feed, this);
@@ -21,8 +21,12 @@ bool CdAudio::init(const std::vector<CdTrack>& tracks) {
         FG_LOG("cannot open audio device: %s", SDL_GetError());
         return false;
     }
+    music_volume = std::clamp(music_volume, 0.0f, 1.0f);
+    if (music_volume != 1.0f && !SDL_SetAudioStreamGain(stream_, music_volume))
+        FG_LOG("cannot set the music volume: %s", SDL_GetError());
     SDL_ResumeAudioStreamDevice(stream_);
-    FG_LOG("audio: CD tracks play through %s", SDL_GetCurrentAudioDriver());
+    FG_LOG("audio: CD tracks play through %s at %d%% volume", SDL_GetCurrentAudioDriver(),
+           int(music_volume * 100 + 0.5f));
     return true;
 }
 

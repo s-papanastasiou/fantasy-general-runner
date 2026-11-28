@@ -103,6 +103,11 @@ Unicorn details learned the hard way:
   and volume drive `cd_audio.cpp`, which decodes `MUSIC/TrackNN.ogg`
   (stb_vorbis) on SDL's audio thread; a play range runs on into the next
   track as on a disc. Status/position queries are answered from a clock.
+  The game never sets the CD volume: its seven MSCDEX requests
+  (`CD_SendMscdexIoctl` `0x48570`) are all IOCTL input (disc, track and
+  audio status), so music always plays at full level and the game's option
+  only switches it on or off. `--music-volume P` sets the gain of the CD
+  audio stream (effects play through their own stream, unchanged).
 - **Sound effects**: Miles AIL 3.03 (inside the game) loads `SB16.DIG` (per
   `DIG.INI`) into DOS memory and calls it via int 66h (DPMI 0300h). The
   runner answers those calls as SB16.DIG does (`dig_driver.cpp`, functions
