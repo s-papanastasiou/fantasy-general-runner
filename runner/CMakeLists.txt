@@ -43,8 +43,29 @@ add_executable(fg-runner
   src/launcher.cpp
   src/launcher_text.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/launcher_fonts.S
+  src/crt.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/crt_shaders.S
   src/log.cpp
 )
+# The CRT filter's shaders (shaders/, MIT): compiled to SPIR-V with glslang
+# (Fedora: glslang; Ubuntu: glslang-tools) and embedded with .incbin.
+find_program(FG_GLSLANG NAMES glslangValidator glslang REQUIRED)
+set(FG_SPV_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+set(FG_SPV_FILES)
+foreach(shader vga-1080p crt-hyllian)
+  set(src "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${shader}.frag")
+  set(spv "${FG_SPV_DIR}/${shader}.spv")
+  add_custom_command(OUTPUT "${spv}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${FG_SPV_DIR}"
+    COMMAND ${FG_GLSLANG} -V "${src}" -o "${spv}"
+    DEPENDS "${src}" VERBATIM)
+  list(APPEND FG_SPV_FILES "${spv}")
+endforeach()
+add_custom_target(fg_shaders DEPENDS ${FG_SPV_FILES})
+add_dependencies(fg-runner fg_shaders)
+configure_file(src/crt_shaders.S.in crt_shaders.S @ONLY)
+set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/crt_shaders.S PROPERTIES OBJECT_DEPENDS "${FG_SPV_FILES}")
+
 # The launcher's fonts, embedded with .incbin (third_party/fonts/README.md).
 set(FG_FONTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fonts")
 configure_file(src/launcher_fonts.S.in launcher_fonts.S @ONLY)

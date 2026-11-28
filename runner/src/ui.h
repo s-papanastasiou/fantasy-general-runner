@@ -17,6 +17,7 @@ struct UiOptions {
     // of 640x480 after a resize. Otherwise the picture fills the window at 4:3
     // with uneven pixel sizes.
     bool integer_scale = true;
+    bool crt = false;               // CRT filter (crt.h) at start; Ctrl+F9 toggles
     bool fullscreen = true;         // start in (desktop) fullscreen (--window: not); Alt+Enter toggles
     // Scripted input for automated runs: "TIME ACTION; ..." where ACTION is
     // "key NAME" (esc, enter, space, tab, f1..f10, up/down/left/right, a letter

@@ -50,7 +50,7 @@ if [[ "$(id -u)" == 0 ]] && command -v apt-get >/dev/null; then
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
     apt-get install -y -qq --no-install-recommends \
-        build-essential g++-12 gcc-12 curl ca-certificates file pkg-config python3-pip \
+        build-essential g++-12 gcc-12 curl ca-certificates file pkg-config python3-pip glslang-tools \
         libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxfixes-dev \
         libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libdecor-0-dev \
         libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libdrm-dev libgbm-dev \
@@ -59,7 +59,7 @@ if [[ "$(id -u)" == 0 ]] && command -v apt-get >/dev/null; then
     pip3 install -q "$CMAKE_PIP" "$NINJA_PIP"
 fi
 export CC=gcc-12 CXX=g++-12   # C++20 library support beyond GCC 11
-for tool in "$CC" "$CXX" cmake ninja curl strip; do
+for tool in "$CC" "$CXX" cmake ninja curl strip glslangValidator; do
     command -v "$tool" >/dev/null || { echo "missing: $tool" >&2; exit 1; }
 done
 
@@ -117,6 +117,7 @@ install -m 755 "$ROOT/runner/linux/install-desktop-entry.sh" "$PKG/"
 cp "$ROOT/runner/linux/README-linux.txt" "$PKG/README.txt"
 cp "$ROOT/LICENSE" "$PKG/LICENSE.txt"
 cp "$ROOT/runner/third_party/fonts/OFL-Inter.txt" "$ROOT/runner/third_party/fonts/OFL-Metamorphous.txt" "$PKG/"
+cp "$ROOT/runner/shaders/LICENSE-shaders.txt" "$PKG/"
 cp "$WORK/sdl3-src/LICENSE.txt" "$PKG/LICENSE-SDL3.txt"
 cp "$WORK/unicorn-src/COPYING" "$PKG/LICENSE-Unicorn.txt"
 

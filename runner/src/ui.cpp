@@ -7,10 +7,13 @@
 #include <cmath>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <sstream>
 #include <thread>
+#include <tuple>
 #include <vector>
 
+#include "crt.h"
 #include "input.h"
 #include "log.h"
 #include "png.h"
@@ -163,9 +166,22 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
     if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) { FG_LOG("SDL video: %s", SDL_GetError()); return false; }
     // High pixel density: on a scaled desktop, draw into real screen pixels
     // rather than letting the compositor stretch the window.
-    if (!SDL_CreateWindowAndRenderer("Fantasy General", 640 * opt.scale, 480 * opt.scale,
-                                     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &win, &ren)) {
+    win = SDL_CreateWindow("Fantasy General", 640 * opt.scale, 480 * opt.scale,
+                           SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    if (win) {
+        // SDL's GPU renderer on Vulkan runs the CRT filter's shaders (crt.h);
+        // without Vulkan, SDL's usual renderer (no filter). $SDL_RENDER_DRIVER
+        // still chooses, if set.
+        if (!std::getenv("SDL_RENDER_DRIVER")) {
+            SDL_SetHint(SDL_HINT_GPU_DRIVER, "vulkan");
+            ren = SDL_CreateRenderer(win, SDL_GPU_RENDERER);
+            if (!ren) FG_LOG("no GPU renderer (%s); the CRT filter is unavailable", SDL_GetError());
+        }
+        if (!ren) ren = SDL_CreateRenderer(win, nullptr);
+    }
+    if (!win || !ren) {
         FG_LOG("no window with %s video: %s", SDL_GetCurrentVideoDriver(), SDL_GetError());
+        if (win) SDL_DestroyWindow(win);
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
         return false;
     }
@@ -189,7 +205,17 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
     };
     // Ctrl+F11 switches between integer and fit scaling while running.
     bool integer_scale = opt.integer_scale;
-    if (integer_scale) set_window_pixels(std::min(opt.scale, max_window_multiple()));
+    // The CRT filter (Ctrl+F9). While it is on for the game's 640x480 screen,
+    // the picture is scaled by whole numbers, as its shaders expect.
+    CrtFilter crt;
+    crt.init(ren);
+    bool crt_on = opt.crt;
+    if (crt_on && !crt.available()) FG_LOG("crt: --crt given, but the filter is unavailable");
+    int tex_w = 0, tex_h = 0;
+    auto crt_active = [&] { return crt_on && crt.available() && tex_w == 640 && tex_h == 480; };
+    auto exact_scale = [&] { return integer_scale || crt_active(); };
+    if (integer_scale || (crt_on && crt.available()))
+        set_window_pixels(std::min(opt.scale, max_window_multiple()));
     bool fullscreen = opt.fullscreen;
     if (fullscreen) SDL_SetWindowFullscreen(win, true);
     // After the user resizes the window, snap it to a multiple of 640x480 once
@@ -209,12 +235,18 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
     std::string shown_title;
     SDL_SetRenderVSync(ren, 1);
     SDL_Texture* tex = nullptr;
-    int tex_w = 0, tex_h = 0;
     // 640x400 and 320x200 are shown at 4:3 like a CRT would.
     auto set_presentation = [&] {
         SDL_SetRenderLogicalPresentation(ren, tex_w, tex_w * 3 / 4,
-                                         integer_scale ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
+                                         exact_scale() ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
                                                        : SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    };
+    // Back to exact scaling in a window: snap it to a multiple of 640x480 now.
+    auto snap_now = [&] {
+        if (!exact_scale()) return;
+        snap_pending = true;
+        snap_at = clock::now();
+        refused_w = refused_h = -1;
     };
     Frame frame;
     std::vector<uint32_t> uploaded;  // pixels last copied into `tex`
@@ -277,12 +309,17 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
                     if (!e.key.repeat) {
                         integer_scale = !integer_scale;
                         if (tex_w) set_presentation();
-                        // Back to integer in a window: snap it to a multiple of 640x480 now.
-                        if (integer_scale) {
-                            snap_pending = true;
-                            snap_at = clock::now();
-                            refused_w = refused_h = -1;
-                        }
+                        snap_now();
+                    }
+                    break;  // not passed to the game
+                }
+                if (e.key.key == SDLK_F9 && (e.key.mod & SDL_KMOD_CTRL)) {
+                    if (!e.key.repeat) {
+                        crt_on = !crt_on;
+                        FG_LOG("crt: %s%s", crt_on ? "on" : "off",
+                               crt_on && !crt.available() ? " (unavailable: no GPU renderer with Vulkan)" : "");
+                        if (tex_w) set_presentation();
+                        snap_now();
                     }
                     break;  // not passed to the game
                 }
@@ -311,7 +348,7 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
             bool maximized = SDL_GetWindowFlags(win) & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_FULLSCREEN);
             int k = std::max(1, int(std::min(pw / 640.0, ph / 480.0) + 0.5));
             k = std::min(k, max_window_multiple());
-            if (integer_scale && !maximized && (pw != 640 * k || ph != 480 * k)) {
+            if (exact_scale() && !maximized && (pw != 640 * k || ph != 480 * k)) {
                 if (pw == refused_w && ph == refused_h) {
                     refused_w = refused_h = -1;  // the window manager kept its size: accept it
                 } else {
@@ -338,10 +375,16 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
             SDL_GetCurrentRenderOutputSize(ren, &ow, &oh);
             double sx = double(ow) / tex_w, sy = double(oh) / (tex_w * 3 / 4);
             char buf[96];
-            if (integer_scale)
-                std::snprintf(buf, sizeof buf, "%dx, exact pixels", std::max(1, int(std::min(sx, sy))));
-            else
+            int k = std::max(1, int(std::min(sx, sy)));
+            if (crt_active()) {
+                const char* preset = CrtFilter::preset_for(tex_w, tex_h, k * tex_h);
+                if (preset) std::snprintf(buf, sizeof buf, "%dx, CRT %s", k, preset);
+                else std::snprintf(buf, sizeof buf, "%dx, CRT needs 2x", k);
+            } else if (integer_scale) {
+                std::snprintf(buf, sizeof buf, "%dx, exact pixels", k);
+            } else {
                 std::snprintf(buf, sizeof buf, "%.2fx, uneven pixels", std::min(sx, sy));
+            }
             if (tex_h != tex_w * 3 / 4) std::snprintf(buf, sizeof buf, "%dx%d stretched to 4:3", tex_w, tex_h);
             if (shown_scale != buf) {
                 shown_scale = buf;
@@ -377,7 +420,11 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
         SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
         SDL_RenderClear(ren);
         SDL_FRect dst{0, 0, float(frame.width), float(frame.width * 3 / 4)};
+        SDL_FRect shown;  // where the image lands, in output pixels
+        bool filtered = crt_active() && SDL_GetRenderLogicalPresentationRect(ren, &shown) &&
+                        crt.begin(ren, tex_w, tex_h, shown);
         SDL_RenderTexture(ren, tex, nullptr, &dst);
+        if (filtered) crt.end(ren);
         SDL_RenderPresent(ren);
         {
             auto next = last_present + frame_interval();
@@ -391,9 +438,16 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
         }
         if (want_shot && elapsed() >= opt.screenshot_after) {
             take_screenshot(opt.screenshot);
+            // FG_CRT_SHOTS=PREFIX: also the filtered image as on 1080p,
+            // 1440p and 4K screens (PREFIX-1080p.png ...), for checks.
+            if (const char* prefix = std::getenv("FG_CRT_SHOTS"); prefix && tex && crt.available()) {
+                for (auto [w, h, name] : {std::tuple{1920, 1080, "1080p"}, {2560, 1440, "1440p"}, {3840, 2160, "4k"}})
+                    crt.render_to_png(ren, tex, tex_w, tex_h, w, h, std::string(prefix) + "-" + name + ".png");
+            }
             running = false;
         }
     }
+    crt.shutdown();
     if (tex) SDL_DestroyTexture(tex);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);

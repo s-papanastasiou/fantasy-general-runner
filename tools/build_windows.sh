@@ -5,7 +5,7 @@
 #
 #   tools/build_windows.sh [VERSION]      (default: dev)
 #
-# Host packages (Fedora): mingw64-gcc-c++ mingw64-SDL3 cmake ninja-build zip.
+# Host packages (Fedora): mingw64-gcc-c++ mingw64-SDL3 cmake ninja-build zip glslang.
 # Unicorn is not packaged for MinGW: its source (pinned, SHA-256 verified) is
 # built here as a static library into tools/vendor/unicorn-mingw64/.
 set -euo pipefail
@@ -27,7 +27,7 @@ UNICORN_PREFIX="$VENDOR/unicorn-mingw64"
 
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 
-for tool in x86_64-w64-mingw32-g++ cmake ninja zip; do
+for tool in x86_64-w64-mingw32-g++ cmake ninja zip glslangValidator; do
     command -v "$tool" >/dev/null || { echo "missing: $tool (see the header of this script)" >&2; exit 1; }
 done
 [[ -f "$MINGW_BIN/SDL3.dll" ]] || { echo "missing: mingw64-SDL3" >&2; exit 1; }
@@ -75,6 +75,7 @@ x86_64-w64-mingw32-strip -o "$PKG/fg-runner.exe" "$BUILD/fg-runner.exe"
 cp "$MINGW_BIN/SDL3.dll" "$MINGW_BIN/libwinpthread-1.dll" "$PKG/"
 cp "$ROOT/LICENSE" "$PKG/LICENSE.txt"
 cp "$ROOT/runner/third_party/fonts/OFL-Inter.txt" "$ROOT/runner/third_party/fonts/OFL-Metamorphous.txt" "$PKG/"
+cp "$ROOT/runner/shaders/LICENSE-shaders.txt" "$PKG/"
 cp "$VENDOR/unicorn-src/COPYING" "$PKG/LICENSE-Unicorn.txt"
 cp /usr/share/licenses/mingw64-SDL3/LICENSE.txt "$PKG/LICENSE-SDL3.txt"
 cp "$ROOT/runner/win/README-windows.txt" "$PKG/README.txt"

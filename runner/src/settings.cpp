@@ -56,6 +56,7 @@ Settings load_settings() {
         else if (k == "fullscreen") s.fullscreen = v != "false";
         else if (k == "scale") s.scale = to_int(v, 1, 16, s.scale);
         else if (k == "scaling") s.integer_scale = v != "fit";
+        else if (k == "crt") s.crt = v == "true";
         else if (k == "music-volume") s.music_volume = to_int(v, 10, 100, s.music_volume);
         else if (k == "sound") s.sound = v != "false";
         else if (k == "scrolling") s.original_scrolling = v == "original";
@@ -75,6 +76,7 @@ bool save_settings(const Settings& s) {
         << "fullscreen = " << (s.fullscreen ? "true" : "false") << "\n"
         << "scale = " << s.scale << "\n"
         << "scaling = " << (s.integer_scale ? "integer" : "fit") << "\n"
+        << "crt = " << (s.crt ? "true" : "false") << "\n"
         << "music-volume = " << s.music_volume << "\n"
         << "sound = " << (s.sound ? "true" : "false") << "\n"
         << "scrolling = " << (s.original_scrolling ? "original" : "eight-way") << "\n"
@@ -95,6 +97,7 @@ std::vector<std::string> settings_args(const Settings& s) {
     if (s.fullscreen != d.fullscreen) a.push_back(s.fullscreen ? "--fullscreen" : "--window");
     if (s.scale != d.scale) a.push_back("--scale " + std::to_string(s.scale));
     if (s.integer_scale != d.integer_scale) a.push_back(s.integer_scale ? "--scaling integer" : "--scaling fit");
+    if (s.crt != d.crt) a.push_back("--crt");
     if (s.music_volume != d.music_volume) a.push_back("--music-volume " + std::to_string(s.music_volume));
     if (s.sound != d.sound) a.push_back("--no-sound");
     if (s.original_scrolling != d.original_scrolling) a.push_back("--original-scrolling");

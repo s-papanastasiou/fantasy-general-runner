@@ -89,7 +89,10 @@ aspect-correct. F12 saves
 `fg-screenshot.png`. Mouse: captured (kept on the game image) in fullscreen
 and after a click into a window; Ctrl+F10 releases or captures it.
 Ctrl+F11 switches between integer scaling (exact pixels, black borders)
-and fit scaling (fills the screen, uneven pixels). On the
+and fit scaling (fills the screen, uneven pixels). Ctrl+F9 switches the CRT
+filter (`--crt`): DOSBox Staging's VGA monitor shaders, chosen by screen
+size like its `crt-auto` (1080p, 1440p, 4K); it needs Vulkan and scales by
+whole numbers while on. On the
 battle map the arrow keys scroll too (two at once diagonally), like the
 pointer at the screen edge.
 Useful options (after `tools/run.sh`):
@@ -99,6 +102,7 @@ Useful options (after `tools/run.sh`):
 | `--launcher` | show the launcher (the default when started without options) |
 | `--window` | start in a window instead of fullscreen |
 | `--scale N` | window size (640×480 × N) |
+| `--crt` | CRT filter: DOSBox Staging's VGA monitor shaders (needs Vulkan; at least 2x, best at 1440p or 4K); Ctrl+F9 switches while running |
 | `--scaling integer\|fit` | integer: exact pixels with black borders (default); fit: fills the screen, uneven pixels. Ctrl+F11 switches while running |
 | `--headless --screenshot F.png --screenshot-after S` | no window; save the screen after S seconds |
 | `--events "6 key esc; 15 click 548 400"` | scripted input (keys, clicks) for automated checks |
@@ -174,7 +178,7 @@ tools/ghidra.sh             # open Ghidra
 ```
 
 Runner build requirements (Fedora): `gcc-c++ cmake ninja-build SDL3-devel
-unicorn-devel` (a 64-bit build; 32-bit hosts are not supported).
+unicorn-devel glslang` (a 64-bit build; 32-bit hosts are not supported).
 
 ## Layout
 
@@ -199,5 +203,6 @@ unicorn-devel` (a 64-bit build; 32-bit hosts are not supported).
 GPL-2.0-or-later (see `LICENSE`), except `runner/third_party/` (own
 licences: stb is public domain or MIT; the launcher's fonts, Inter and
 Metamorphous, are under the SIL Open Font License 1.1, whose texts the
-release packages include). The Unicorn backend links Unicorn (GPL-2.0), so its builds are
+release packages include) and `runner/shaders/` (DOSBox Staging's CRT
+shaders, MIT, `LICENSE-shaders.txt` in the packages). The Unicorn backend links Unicorn (GPL-2.0), so its builds are
 distributed under GPL-2.0. No game files or game code are included.

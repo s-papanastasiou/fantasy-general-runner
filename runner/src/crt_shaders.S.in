@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* The CRT filter's shaders (runner/shaders/, MIT), compiled to SPIR-V at
+   build time and embedded as read-only data. CMake fills in the paths. */
+#if defined(_WIN32)
+        .section .rdata,"dr"
+#else
+        .section .rodata
+#endif
+        .balign 4
+#define BLOB(name, file) \
+        .global name; name: .incbin file; \
+        .global name##_end; name##_end: .balign 4
+
+BLOB(fg_spv_vga_1080p, "@FG_SPV_DIR@/vga-1080p.spv")
+BLOB(fg_spv_crt_hyllian, "@FG_SPV_DIR@/crt-hyllian.spv")
+
+#if !defined(_WIN32)
+        .section .note.GNU-stack,"",@progbits
+#endif
