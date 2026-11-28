@@ -158,7 +158,12 @@ int main(int argc, char** argv) {
         else if (a == "--original-scrolling") original_scrolling = true;
         else if (a == "--ai-move-ms" && i + 1 < argc) ai_step_ms = std::max(0.0, std::atof(argv[++i]));
         else if (a == "--ai-view-ms" && i + 1 < argc) ai_view_ms = std::max(0.0, std::atof(argv[++i]));
-        else if (a == "--music-volume" && i + 1 < argc) music_volume = std::clamp(std::atof(argv[++i]), 0.0, 100.0);
+        else if (a == "--music-volume" && i + 1 < argc) {
+            // At least 10%: music that is on should be heard (the game's option turns it off).
+            double v = std::atof(argv[++i]);
+            music_volume = std::clamp(v, 10.0, 100.0);
+            if (music_volume != v) FG_LOG("--music-volume %g: using %g (10-100)", v, music_volume);
+        }
         else if (a == "--scale" && i + 1 < argc) ui.scale = std::max(1, std::atoi(argv[++i]));
         else if (a == "--version") {
             std::printf("fg-runner %s\n", FG_VERSION);
@@ -170,7 +175,7 @@ int main(int argc, char** argv) {
         } else {
             std::fprintf(stderr,
                          "usage: %s [--version] [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [--scale N] [--window|--fullscreen (default)] [--headless] [--mute|--audio] [--no-sound]\n"
-                         "          [--music-volume PERCENT (CD music, 0-100, default 100; sound effects unchanged)]\n"
+                         "          [--music-volume PERCENT (CD music, 10-100, default 100; off: the game's option; sound effects unchanged)]\n"
                          "          [--scaling integer|fit (default integer: exact pixels; Ctrl+F11 switches)]\n"
                          "          [--scroll-ms MS (battle-map scroll step interval, default 120)]\n"
                          "          [--original-scrolling (sides scroll diagonally, as in the original game)]\n"

@@ -88,7 +88,7 @@ Useful options (after `tools/run.sh`):
 | `--headless --screenshot F.png --screenshot-after S` | no window; save the screen after S seconds |
 | `--events "6 key esc; 15 click 548 400"` | scripted input (keys, clicks) for automated checks |
 | `--mute` / `--audio` | no audio / audio even when headless (default: on with a window) |
-| `--music-volume P` | music (CD audio) volume in percent, 0–100 (default 100); sound effects are not changed. The game has no volume control of its own, only music on/off |
+| `--music-volume P` | music (CD audio) volume in percent, 10–100 (default 100); sound effects are not changed. The game has no volume control of its own; to silence the music, switch it off in the game |
 | `--no-sound` | run without sound effects (hides `DIG.INI`) |
 | `--scroll-ms MS` | battle-map edge scrolling: time between steps (default 120; higher is slower) |
 | `--original-scrolling` | edge scrolling as in the original: the sides scroll diagonally (default: eight-way, sides straight, corners diagonal) |

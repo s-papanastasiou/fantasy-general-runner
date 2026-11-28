@@ -106,8 +106,9 @@ Unicorn details learned the hard way:
   The game never sets the CD volume: its seven MSCDEX requests
   (`CD_SendMscdexIoctl` `0x48570`) are all IOCTL input (disc, track and
   audio status), so music always plays at full level and the game's option
-  only switches it on or off. `--music-volume P` sets the gain of the CD
-  audio stream (effects play through their own stream, unchanged).
+  only switches it on or off. `--music-volume P` (10-100: music that is on
+  stays audible; the game turns it off) sets the gain of the CD audio stream
+  (effects play through their own stream, unchanged).
 - **Sound effects**: Miles AIL 3.03 (inside the game) loads `SB16.DIG` (per
   `DIG.INI`) into DOS memory and calls it via int 66h (DPMI 0300h). The
   runner answers those calls as SB16.DIG does (`dig_driver.cpp`, functions
