@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-// fg-runner: run Fantasy General's BARENA.EXE without DOS (natively on 32-bit
-// Linux, or in the Unicorn CPU emulator; see cpu_backend.h).
+// fg-runner: run Fantasy General's BARENA.EXE without DOS, in the Unicorn
+// CPU emulator (cpu_backend.h).
 //
 //   fg-runner [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [-- game arguments]
 //
@@ -284,9 +284,8 @@ int main(int argc, char** argv) {
     static Machine machine;
     Machine& m = machine;
     g_machine = &m;
-    if (!m.as.init(kCpuMapsAllMemory)) return fail("Cannot reserve memory for the game.");
-    FG_LOG("game address space at host %#llx; CPU backend: %s",
-           static_cast<unsigned long long>(m.as.host_base()), kCpuBackendName);
+    if (!m.as.init()) return fail("Cannot reserve memory for the game.");
+    FG_LOG("game address space at host %#llx", static_cast<unsigned long long>(m.as.host_base()));
     if (!cpu_init()) return fail("Cannot start the CPU emulator.");
 
     m.fs = std::make_unique<DosFs>();
@@ -337,8 +336,7 @@ int main(int argc, char** argv) {
     if (!audio) SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO) && audio) {
         FG_LOG("audio unavailable: %s", SDL_GetError());
-        FG_LOG("(the runner is 32-bit: install the 32-bit PipeWire client library, e.g. "
-               "'sudo dnf install pipewire-libs.i686'); continuing without sound output");
+        FG_LOG("continuing without sound output");
         SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
         SDL_InitSubSystem(SDL_INIT_AUDIO);
     }

@@ -158,25 +158,17 @@ bool run_ui(const UiOptions& opt, const std::atomic<bool>& game_done, const std:
 
     SDL_Window* win = nullptr;
     SDL_Renderer* ren = nullptr;
-    auto open_window = [&](const char* video_driver) {
-        if (video_driver) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, video_driver);
-        SDL_SetHint(SDL_HINT_APP_ID, "fantasy-general-runner");       // Wayland: matches the desktop entry
-        SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");           // the .exe's icon (fg-runner.rc)
-        if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) { FG_LOG("SDL video: %s", SDL_GetError()); return false; }
-        // High pixel density: on a scaled desktop, draw into real screen
-        // pixels rather than letting the compositor stretch the window.
-        if (SDL_CreateWindowAndRenderer("Fantasy General", 640 * opt.scale, 480 * opt.scale,
-                                        SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &win, &ren))
-            return true;
-        FG_LOG("no usable renderer with %s video (%s)%s", SDL_GetCurrentVideoDriver(), SDL_GetError(),
-               video_driver ? "" : "; trying X11 software rendering");
+    SDL_SetHint(SDL_HINT_APP_ID, "fantasy-general-runner");       // Wayland: matches the desktop entry
+    SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");           // the .exe's icon (fg-runner.rc)
+    if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) { FG_LOG("SDL video: %s", SDL_GetError()); return false; }
+    // High pixel density: on a scaled desktop, draw into real screen pixels
+    // rather than letting the compositor stretch the window.
+    if (!SDL_CreateWindowAndRenderer("Fantasy General", 640 * opt.scale, 480 * opt.scale,
+                                     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &win, &ren)) {
+        FG_LOG("no window with %s video: %s", SDL_GetCurrentVideoDriver(), SDL_GetError());
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
         return false;
-    };
-    // The runner is a 32-bit program: without 32-bit GL/Vulkan drivers the
-    // Wayland backend has no usable renderer, but X11 (XWayland) still offers
-    // a software framebuffer.
-    if (!open_window(nullptr) && !open_window("x11")) return false;
+    }
     FG_LOG("window: %s video, %s renderer", SDL_GetCurrentVideoDriver(), SDL_GetRendererName(ren));
     // The game draws its own pointer; hide the desktop's over our window.
     SDL_HideCursor();

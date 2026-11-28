@@ -100,7 +100,7 @@ BUILD="$WORK/runner-build"
 log "building fg-runner $VERSION"
 rm -rf "$BUILD"
 PKG_CONFIG_PATH="$SDL_PREFIX/lib/pkgconfig" cmake -S "$ROOT/runner" -B "$BUILD" -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DFG_CPU=unicorn -DFG_UNICORN_ROOT="$UNICORN_PREFIX" \
+    -DCMAKE_BUILD_TYPE=Release -DFG_UNICORN_ROOT="$UNICORN_PREFIX" \
     -DFG_PORTABLE=ON -DFG_VERSION="$VERSION" >/dev/null
 cmake --build "$BUILD" >/dev/null
 

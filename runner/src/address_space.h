@@ -28,10 +28,8 @@ public:
     static constexpr uint32_t kConvStart = 0x00001000;
     static constexpr uint32_t kConvEnd = 0x000A0000;
 
-    // all_accessible: map the whole region readable and writable up front
-    // (emulator backends, which keep their own view of what is mapped);
-    // otherwise unallocated memory faults (native backend).
-    bool init(bool all_accessible);
+    // Reserves the region, all of it readable and writable.
+    bool init();
 
     uintptr_t host_base() const { return reinterpret_cast<uintptr_t>(base_); }
     uint8_t* host(uint32_t lin) const { return base_ + lin; }
@@ -39,7 +37,7 @@ public:
     // Game linear address of a host pointer inside the region (or ~0u).
     uint32_t linear_of(const void* p) const;
 
-    // Make [lin, lin+size) accessible (page granular).
+    // Check that [lin, lin+size) lies in the region (all of it is accessible).
     bool commit(uint32_t lin, uint32_t size);
 
     template <typename T> T read(uint32_t lin) const { T v; std::memcpy(&v, host(lin), sizeof v); return v; }
@@ -58,7 +56,6 @@ public:
 
 private:
     uint8_t* base_ = nullptr;
-    bool all_accessible_ = false;
     std::map<uint32_t, uint32_t> heap_;  // lin -> size (page multiple)
     std::map<uint32_t, uint32_t> conv_;  // segment -> paragraphs
     uint32_t conv_largest_free() const;

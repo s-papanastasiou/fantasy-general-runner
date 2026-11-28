@@ -11,7 +11,7 @@
 // interrupt hook, which hands it to the shared trap logic (traps.cpp) on a
 // copy of the registers; `in`/`out` have instruction hooks of their own.
 //
-// Unlike the native backend, IOPL is 3: `cli`/`sti` run in the emulator and
+// IOPL is 3: `cli`/`sti` run in the emulator and
 // Machine::virtual_if follows the emulated IF. #GP must not be used for
 // routine work here: QEMU only clears its "exception in progress" state when
 // it delivers an exception itself, so after one hooked #GP the next fault is
@@ -38,11 +38,15 @@ namespace {
 // System area (emulator physical), just above the game's address space.
 constexpr uint64_t kSysBase = AddressSpace::kSize;
 constexpr uint32_t kSysSize = 0x20000;
-constexpr uint32_t kGdtOff = 0x0000;        // 5 entries
+constexpr uint32_t kGdtOff = 0x0000;        // 9 entries
 constexpr uint32_t kStubOff = 0x0100;       // ring-0 entry stub: iretd
 constexpr uint32_t kRing0StackOff = 0x1000; // grows down from here
 constexpr uint32_t kLdtOff = 0x10000;       // Ldt::kEntries * 8 = 64 KB
 constexpr uint16_t kSelRing0Code = 0x08, kSelRing0Data = 0x10, kSelLdt = 0x18;
+// DOS/4GW's selector for the BIOS data area (real-mode segment 0040h). The
+// game loads it when it quits (0x58081 reads the CRTC port at 0040:0063).
+constexpr uint16_t kSelBiosData = 0x40;
+constexpr int kGdtEntries = kSelBiosData / 8 + 1;
 constexpr uint64_t kNeverStop = ~0ull;  // `until` address that is never reached
 
 // QEMU's internal descriptor flags (the descriptor's high dword).
@@ -223,9 +227,10 @@ bool cpu_init() {
     encode_descriptor(gdt + kSelRing0Code, 0, 0xFFFFFFFF, 0x9A, true);  // present, DPL0, code, readable
     encode_descriptor(gdt + kSelRing0Data, 0, 0xFFFFFFFF, 0x92, true);  // present, DPL0, data, writable
     encode_descriptor(gdt + kSelLdt, uint32_t(kSysBase + kLdtOff), Ldt::kEntries * 8 - 1, 0x82, false);
+    encode_descriptor(gdt + kSelBiosData, 0x400, 0xFFFF, 0xF2, false);  // present, DPL3, data, writable
     g_sys[kStubOff] = 0xCF;  // iretd
 
-    uc_x86_mmr gdtr{0, kSysBase + kGdtOff, 5 * 8 - 1, 0};
+    uc_x86_mmr gdtr{0, kSysBase + kGdtOff, kGdtEntries * 8 - 1, 0};
     uc_x86_mmr ldtr{kSelLdt, kSysBase + kLdtOff, Ldt::kEntries * 8 - 1, kDescP | (2u << kDescTypeShift)};
     // A task register with no I/O permission bitmap: every `in`/`out` at CPL 3 raises #GP.
     uc_x86_mmr tr{0, 0, 0, kDescP | (9u << kDescTypeShift)};

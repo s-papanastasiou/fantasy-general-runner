@@ -1,8 +1,7 @@
 # Runner specification
 
 What the runner has to provide so that BARENA.EXE's original code runs
-without DOS, either natively in a 32-bit Linux process or in the Unicorn CPU
-emulator (see "CPU backends"). Derived from `tools/ghidra/scripts/FGIntInventory.java`
+without DOS, in the Unicorn CPU emulator (see "CPU emulation"). Derived from `tools/ghidra/scripts/FGIntInventory.java`
 and call-site analysis (`FGCallSites.java`); addresses are Ghidra addresses
 (preferred object bases).
 
@@ -10,9 +9,8 @@ and call-site analysis (`FGCallSites.java`); addresses are Ghidra addresses
 
 - The main thread runs the SDL3 window; the game runs on its own thread.
 - Game memory is one reserved 256 MB host region, so game linear address X
-  is host `base + X`. Native backend: the game's segments (LDT descriptors
-  via `modify_ldt`) are based at that region. Unicorn backend: the region is
-  the emulator's physical memory from address 0. The game therefore sees a full DOS first megabyte (IVT, BIOS
+  is host `base + X`; the region is the emulator's physical memory from
+  address 0. The game therefore sees a full DOS first megabyte (IVT, BIOS
   data area, conventional memory, VGA window at `0xa0000`) as ordinary
   memory; nothing needs trapping for low-memory access.
 - LE objects are loaded at **Ghidra address + `0x1000000`** with fixups
@@ -20,51 +18,48 @@ and call-site analysis (`FGCallSites.java`); addresses are Ghidra addresses
 - Conventional memory `0x1000`–`0x9FFFF` serves DOS-memory allocations
   (DPMI `0100h`); `0x600`–`0x6FF` holds the runner's interrupt stubs,
   `0x700` the VBE BIOS data.
-- Segment descriptors (`Ldt`, installed by the backend): DPMI `0000h` (allocate), `0006h`
+- Segment descriptors (`Ldt`, installed in the emulator's LDT): DPMI `0000h` (allocate), `0006h`
   (get base), `0007h`/`0008h`/`0009h` (set base/limit/rights). Miles builds
   selectors; the CD-audio code writes MSCDEX requests through `GS:` with a
   DOS-memory selector.
 
 ## Trapping and interrupts
 
-This section describes the native backend; `traps.cpp` holds the part both
-backends share (instruction decoding, interrupt injection, game hooks).
+`traps.cpp` decodes and emulates what the game cannot do itself: `int n`
+(DOS, DPMI, BIOS services), `in`/`out` and `ins`/`outs` (the devices),
+`hlt`, and the runner's own hook instructions; it injects interrupts and
+runs the game hooks. The emulator hands these over (see below) on a copy
+of the registers and continues at the EIP the handler leaves.
 
-`int`, `in`/`out`, `ins`/`outs`, `cli`/`sti`, `hlt` fault in user mode
-(SIGSEGV, trap 13); the handler (entered through `fg_trap_entry`, which
-restores glibc's `%gs`) decodes the instruction at CS:EIP, emulates it on
-the saved context and advances EIP. Note: sigreturn reloads ESP from
-`REG_ESP`, not `REG_UESP`.
-
-The PIT interrupt is a POSIX timer signal (SIGRTMIN) aimed at the game
-thread at the rate programmed into port 40h. If the virtual IF is set, the
-handler saves the context, pushes an iret frame returning to a trampoline
-(`int FEh` at `0x600`) and jumps to the game's int 08h handler; the
-trampoline traps back and the context is restored exactly. Ticks arriving
-with IF clear are delivered on `sti` or at interrupt return. Unhooked
-vectors point at an `iretd` stub (`0x610`); int 08h's default (`0x618`) also
-advances the BIOS tick count at `0x46c`.
+The PIT interrupt: a timer thread counts ticks at the rate programmed into
+port 40h. When the virtual IF is set, the runner saves the context, pushes
+an iret frame returning to a trampoline (`int FEh` at `0x600`) and jumps
+to the game's int 08h handler; the trampoline comes back to the runner and
+the context is restored exactly. Ticks arriving with IF clear are
+delivered on `sti` or at interrupt return. Unhooked vectors point at an
+`iretd` stub (`0x610`); int 08h's default (`0x618`) also advances the BIOS
+tick count at `0x46c`.
 
 Software interrupts to vectors the game hooked call its handler; others
 behave like DOS/4GW's defaults (int 21h/31h emulated, 10h/16h/1Ah/2Fh/33h
 reflected to the emulated real-mode services).
 
-## CPU backends
+## CPU emulation
 
-Chosen at build time with CMake `-DFG_CPU=native|unicorn` (default: native
-for a 32-bit build, unicorn for 64-bit). `tools/run.sh` uses Unicorn by
-default (since 2026-11-26), built in `build-unicorn/`; `FG_CPU=native
-tools/run.sh` builds and runs the native variant in `build/`. The interface is
-`src/cpu_backend.h`; DOS, DPMI, devices and UI do not know which one runs.
+`cpu_unicorn.cpp` (needs Unicorn >= 2.0) behind the interface in
+`src/cpu_backend.h`; DOS, DPMI, devices and UI only see that interface.
+Game memory is mapped with `uc_mem_map_ptr` (all readable/writable: no
+guard pages). A system area above it (`0x10000000`) holds a GDT, the LDT
+(kept in step with `Ldt`) and a ring-0 `iretd` stub that enters the game at
+CPL 3. GDT entry 8 is DOS/4GW's selector `0040h` for the BIOS data area
+(base `0x400`); the game loads it when it quits.
 
-- **native** (`cpu_native.cpp`, `cpu_native_entry.S`): as described above.
-  32-bit Linux only.
-- **unicorn** (`cpu_unicorn.cpp`, needs `unicorn-devel` >= 2.0): any 64-bit
-  host. Game memory is mapped with `uc_mem_map_ptr` (all readable/writable:
-  no guard pages). A system area above it (`0x10000000`) holds a GDT, the
-  LDT (kept in step with `Ldt`) and a ring-0 `iretd` stub that enters the
-  game at CPL 3. Measured on the scripted battle route: same screens as
-  native and less CPU time (2.1 s vs 5.3 s over 52 s; no signal per trap).
+Until 2026-11-28 there was also a native backend: the game's code ran
+directly on the host CPU in a 32-bit Linux process, with `modify_ldt`
+segments and signals for traps and the timer. It needed 32-bit SDL, Mesa
+and PipeWire packages and worked on Linux only, so it was removed (see the
+git history before that date). On the scripted battle route Unicorn gave
+the same screens with less CPU time (2.1 s vs 5.3 s over 52 s).
 
 Unicorn details learned the hard way:
 
@@ -113,7 +108,7 @@ Unicorn details learned the hard way:
   `DIG.INI`) into DOS memory and calls it via int 66h (DPMI 0300h). The
   runner answers those calls as SB16.DIG does (`dig_driver.cpp`, functions
   300h-306h and 400h-405h; see the header comment there) and keeps the real
-  image in memory for its tables. Miles mixes natively into a DMA double
+  image in memory for its tables. Miles itself mixes into a DMA double
   buffer described by the image's status table (DST at +4FCh: two far
   pointers, +8 = half being played); an SDL3 stream plays the halves from DOS
   memory and flips the index at each half boundary, like the card's IRQ.
@@ -226,7 +221,7 @@ The battle loops (`FUN_0002be3a` and six others) call
 `ScrollBattleMapStep` (`0x6ef53`) on every pass while the pointer is in an
 edge zone (`FUN_0007f7b2` sets the direction in `0xce233`, 8 = none). There
 is no timer: on 1996 hardware the redraw after each step (~90 px, two hex
-columns) set the speed, while natively the map crossed its whole width in
+columns) set the speed, while today the map crosses its whole width in
 under 0.1 s. A second `int FDh` hook (replacing `sub esp,4` at `0x6ef5b`)
 keeps steps at least `--scroll-ms` apart (default 120 ms, ~750 px/s; the
 user confirmed it feels right). It
@@ -283,7 +278,7 @@ replaced bytes, converted before comparing.
 On the computer's turn the game recentres the view on each unit it
 considers and redraws the whole map (`RedrawBattleMap` `0x85a45`, view
 origin `0xe93d8`), often several units in a row. A full redraw once took
-a good fraction of a second; natively the views flicked by every 50-150 ms
+a good fraction of a second; today the views flicked by every 50-150 ms
 and looked like very fast scrolling (reported 2026-11-27). A hook on the
 redraw (`sub esp,4` at `0x85a4d`) keeps each view of the computer's turn on
 screen at least `--ai-view-ms` (default 200, chosen by the user by hand; 0 = unpaced) before drawing a
@@ -300,10 +295,10 @@ once and the loop spun a core (measured 60-100% of one core with window
 and audio). It now never presents faster than the display's refresh rate
 (60 Hz if unknown), and uploads the image only when it changed; a render
 device or target reset forces a new upload. Measured without vsync,
-window and audio (2026-11-27, Ryzen 7 9700X), % of one core, Unicorn /
-native: intro video 5.5/6.2, idle main menu 2.6/3.1, idle battle map
-11/4.6, scrolling 21/6.7, computer's turn 15/10. Headless (no window,
-no audio): idle menu ~1, idle battle map 7.4/2.2.
+window and audio (2026-11-27, Ryzen 7 9700X), % of one core: intro video
+5.5, idle main menu 2.6, idle battle map 11, scrolling 21, computer's
+turn 15. Headless (no window, no audio): idle menu ~1, idle battle map
+7.4.
 
 ## Display scaling
 
@@ -332,8 +327,6 @@ font and size once into an atlas at the real pixel size
 (`launcher_text.cpp`); the fonts (Inter, Metamorphous; OFL) are embedded
 with `.incbin` (`launcher_fonts.S.in`). Folder pickers are SDL's
 asynchronous `SDL_ShowOpenFolderDialog`; the answer is polled each frame.
-Like the game window it falls back to X11 when Wayland has no renderer
-(32-bit native build).
 
 Settings (`settings.cpp`): one per command-line option, saved on Launch
 to `<pref>/settings.ini` (`key = value`, keys named like the options).
@@ -354,53 +347,12 @@ into `PREFIX-N.png` and quits (works under Wine too).
   a native Smacker decoder.
 - **UVBELib**: not needed if the runner always passes `n` (the GOG default).
 
-## Why the runner is a 32-bit program (and the alternatives)
+## Portability: Windows and macOS
 
-The game's code runs natively inside the runner's own process, on the host
-CPU, in 32-bit protected mode with its own LDT segments. A Linux process is
-either 32-bit or 64-bit and every library it loads must match, so the runner
-is built with `-m32` and needs 32-bit builds of SDL3 and of the client
-libraries SDL loads at run time: Mesa (`mesa-dri-drivers.i686`,
-`mesa-libEGL.i686`, `mesa-libGL.i686`) for an accelerated Wayland window and
-PipeWire (`pipewire-libs.i686`) for sound. The kernel, the PipeWire server
-and the GPU stack stay 64-bit. Without 32-bit Mesa the runner falls back to
-SDL's X11 backend with software rendering; without 32-bit PipeWire it runs
-silent (SDL dummy audio driver).
-
-Alternatives if 32-bit packages become a problem:
-
-1. **64-bit runner, game code in compatibility mode** (what Wine's WoW64
-   does). x86-64 CPUs run 32-bit code segments inside a 64-bit process, so
-   SDL/Mesa/PipeWire would be 64-bit. Costs: the trap path gets harder: a
-   64-bit signal frame does not save DS/ES (the handler must read and set
-   them directly), the game's FS/GS loads clobber glibc's 64-bit TLS base
-   (restore it with `wrfsbase`/`arch_prctl` on every trap), entry/exit need
-   far transfers between 64- and 32-bit code segments, and the game memory
-   must sit below 4 GB (it already is a single 256 MB reservation).
-2. **Two processes**: a minimal 32-bit process that only runs the game code
-   (needs only `glibc.i686`, no SDL), and a 64-bit process for window, audio
-   and input, sharing the frame buffer, palette, audio buffers and input
-   state through shared memory. Moderate plumbing; the trap code is
-   unchanged. The cheapest way out of the i686 graphics/audio dependencies.
-
-Decision (2026-11-25): stay 32-bit. It works on Fedora today. Revisit with
-option 2 if multilib support goes away. Since 2026-11-26 the Unicorn
-backend (below) is the default and runs as an ordinary 64-bit program, so
-the native backend's 32-bit needs only matter when it is chosen.
-
-## Portability: Windows, 64-bit-only Linux, macOS
-
-The native backend depends on Linux specifics: `modify_ldt` (custom segment
-bases), asynchronous signals for the timer interrupt, and a 32-bit process.
-
-**Native Windows port of this design: not recommended.** The device and DOS
-emulation (about two thirds of the code) is portable C++/SDL3, and trapping
-maps onto vectored exception handlers, but 64-bit Windows offers no LDT at all
-(why it cannot run 16-bit programs). The game would have to run flat, with
-its accesses below 64 KB (BIOS data area, mouse state at `0x4F0`) patched or
-emulated, every access through Miles'/the CD code's own selectors emulated,
-and timer interrupts injected by suspending the game thread and editing its
-context. Estimate 15-25 sessions, risky.
+How the runner became portable (2026-11-26): the native backend needed
+Linux specifics (`modify_ldt`, signals, a 32-bit process), and 64-bit
+Windows offers no LDT at all, so a Windows port of that design would have
+had to run the game flat and emulate every selector access.
 
 **CPU-emulator backend (the portable option, chosen below).** Replace only the CPU layer (then `trap.cpp`,
 `trap_entry.S`, `ldt.cpp`, timer glue) with an embedded x86 emulator; keep
@@ -410,8 +362,7 @@ hooks; the timer is injected between short emulation slices; the game memory
 can stay our own buffer (mapped into the emulator), so services keep direct
 access. Runs as a normal 64-bit program on Linux, Windows and macOS, x86-64
 or ARM. Roughly 5-20x slower than native, which this 486/Pentium-era game can
-afford (DOSBox runs it fine). Keep the native backend on Linux and select at
-build time. Estimate 8-15 sessions. Candidates (game uses only ~30 x87 instructions):
+afford (DOSBox runs it fine). Estimate 8-15 sessions. Candidates (game uses only ~30 x87 instructions):
 
 | Emulator | Licence | Notes |
 |---|---|---|
@@ -426,8 +377,9 @@ Static recompilation (x86 -> C ahead of time) is the other route: fastest
 and portable, but `VESA480.DLL` is loaded and run at run time and the
 startup code writes into the code object, so it needs special handling.
 
-Decision (2026-11-26): Unicorn, implemented as a second backend (see "CPU
-backends"); the project is licensed GPL-2.0-or-later.
+Decision (2026-11-26): Unicorn (see "CPU emulation"), first as a second
+backend, the only one since 2026-11-28; the project is licensed
+GPL-2.0-or-later.
 
 **Windows (2026-11-27):** `tools/build_windows.sh` cross-compiles with
 MinGW-w64 and packages `dist/fantasy-general-runner-VERSION-windows-x64.zip`

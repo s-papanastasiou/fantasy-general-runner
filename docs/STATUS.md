@@ -4,10 +4,10 @@ Last updated 2026-11-28.
 
 ## Where things stand
 
-The **native runner** (phases 0-5 of the original plan) is done: `BARENA.EXE`
-from the GOG install runs on Linux without DOSBox. Its own code executes on
-the host CPU; the runner emulates DOS/4GW, DOS, DPMI, the BIOS, VGA/VESA, the
-mouse, MSCDEX, the PIT and a Sound Blaster 16 driver.
+The runner works: `BARENA.EXE` from the GOG install runs on Linux and
+Windows without DOSBox. Its code runs in the Unicorn CPU emulator; the
+runner emulates DOS/4GW, DOS, DPMI, the BIOS, VGA/VESA, the mouse, MSCDEX,
+the PIT and a Sound Blaster 16 driver.
 
 Confirmed working (by the user and/or automated runs): intro with the Smacker
 video and CD music in sync, main menu, campaign briefing, strategic campaign
@@ -15,12 +15,9 @@ map, mouse and keyboard, CD music (Ogg tracks), sound effects, window scaling,
 Alt+Enter fullscreen. Since 2026-11-26 (commit `ab61fe9`): low idle CPU use,
 paced battle-map scrolling, pixel-exact integer scaling (see `docs/RUNNER.md`).
 
-**Unicorn CPU backend** (2026-11-26): the game also runs in the Unicorn x86
-emulator as a normal 64-bit program. It is the default in `tools/run.sh`
-(needs `unicorn-devel`); `FG_CPU=native tools/run.sh` runs the native one.
-Checked headless only: the scripted battle route gives
-the same screens as native, with less CPU time. Not yet played by hand
-(window, sound, music, long sessions). See "CPU backends" in
+**Unicorn only** (2026-11-28): the native 32-bit backend (game code on
+the host CPU, Linux only) was removed at the user's request; the runner is
+a 64-bit program built in `build/`. See "CPU emulation" in
 `docs/RUNNER.md`. The project is licensed GPL-2.0-or-later (`LICENSE`).
 
 **Finding the game** (2026-11-27, `game_locate.cpp`): the runner needs
@@ -71,7 +68,7 @@ confirmed it looks good.
 user: "really really fast"); now held to `--ai-move-ms` per pixel (default
 10 ms, the game's own wait for watched moves), visible moves on the
 computer's side only. See "Computer unit moves" in `docs/RUNNER.md`.
-Checked headless (Unicorn and native) on the user's saved battle; not yet
+Checked headless on the user's saved battle; not yet
 judged by hand. Combat animations during the AI turn are not paced by this.
 The user confirmed the move speed; the views then flicked by too fast
 between the computer's units: each view is now held `--ai-view-ms`
@@ -101,7 +98,7 @@ menus, Metamorphous and Inter fonts) with the game folder and every
 setting; it saves `settings.ini` on Launch. Details in "Launcher" in
 `docs/RUNNER.md`; the user picked the look from mockups (canvas
 "Fantasy General launcher mockup", variant A2). Checked: off-screen
-renders of every tab (Unicorn, native, Windows under Wine), game not
+renders of every tab (Linux, and Windows under Wine), game not
 found, long command lines; command-line runs unchanged. The user tried
 it by hand on Linux (Wayland) and approved it. Not yet: real Windows.
 
@@ -129,16 +126,13 @@ was removed); changes to the game's behaviour are made with runner hooks.
 
 ```sh
 tools/setup_tooling.sh     # idempotent: JDK 25, Ghidra 12.2 (+Watcom cspec, GhidraMCP), Open Watcom -> tools/vendor/
-tools/run.sh               # build + run the game (extracts the CD data track to extracted/cd on first run)
-FG_CPU=native tools/run.sh # the same with the native 32-bit backend (default: Unicorn)
+tools/run.sh               # build (build/) + run the game (extracts the CD data track to extracted/cd on first run)
+tools/run.sh --launcher    # the same, through the launcher
 tools/run.sh --window --scale 3 --scaling integer|fit --scroll-ms 120   # display/feel options
 ```
 
-Host packages (Fedora), Unicorn backend: `gcc-c++ cmake ninja-build
-SDL3-devel unicorn-devel`. Native backend: `gcc-c++ cmake ninja-build glibc-devel.i686
-libstdc++-devel.i686 libatomic.i686 SDL3-devel.i686`, plus runtime
-`pipewire-libs.i686` (sound) and `mesa-dri-drivers.i686 mesa-libEGL.i686
-mesa-libGL.i686` (accelerated window). See `docs/RUNNER.md` for why 32-bit.
+Host packages (Fedora): `gcc-c++ cmake ninja-build SDL3-devel
+unicorn-devel`.
 
 ### Ghidra
 
@@ -170,13 +164,6 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
 
 ## Lessons that are not obvious from the code
 
-- **Signal context:** on i386, sigreturn reloads ESP from `REG_ESP`;
-  `REG_UESP` is informational. Writing only `REG_UESP` silently breaks every
-  injected interrupt.
-- **%gs in signal handlers:** glibc keeps TLS and the stack-protector canary
-  at `%gs`; the game loads its own selectors into GS. `fg_trap_entry`
-  restores the host `%gs` before any C++ runs; the runner is built with
-  `-fno-stack-protector`.
 - **Audio locking:** SDL holds an audio stream's lock while running its
   callback. Use that lock (`audio_lock.h`) for state shared with the
   callback; a separate mutex deadlocks against `SDL_SetAudioStreamFormat`.
@@ -197,7 +184,7 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
   or the UI input loops, which read mouse state from memory and never trap.
   The runner sleeps when a poll site repeats within 50 us, 100 times in a row
   (`runner/src/idle.h`); the input loops get an `int FDh` hook for this.
-  To find a spinning loop, sample the game's EIP in the timer signal handler.
+  To find a spinning loop, sample the game's EIP (`FG_PROFILE=1`).
 - **Speed that came from slow hardware:** battle-map scrolling has no timer
   of its own; the runner paces it (`--scroll-ms`, default 120). Expect other
   animations of this kind; the fix is a hook on the step function.
@@ -211,17 +198,17 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
   releases. The title bar shows the state.
 - **Quitting the game** (fixed 2026-11-28): on the way out it loads
   DOS/4GW's BIOS-data selector `0040h` (`0x58081` reads `0040:0063` to
-  wait for retraces); `handle_gp` substitutes an LDT alias (base 0x400)
-  for `mov`/`pop` of 0040h. It also frees a DOS block (DPMI 0101h) whose
+  wait for retraces); the emulator's GDT has that entry (base 0x400). It
+  also frees a DOS block (DPMI 0101h) whose
   selector is still in GS; DPMI says freeing zeroes such registers, which
   the runner now does, or the next timer interrupt's `pop gs` faults.
-- **Wayland + 32-bit:** with no 32-bit GL/Vulkan the Wayland backend has no
-  renderer at all; the runner retries with X11 software rendering.
 
 ## Open items
 
-- Unicorn backend (now the default): play it by hand (window, sound, a full
-  battle); fall back with `FG_CPU=native` if something breaks.
+- Quitting under Wine (Windows build) fails about one run in two, at
+  `0x4b87b` (a buffer clear in the unidentified block `0x48d53`-`0x4cc60`
+  writing through a pointer that holds text) or in DOS memory at `0x1644`;
+  v0.6.0 does the same; Linux 8 of 8 clean. Not investigated yet.
 - Maybe later: read the game straight from a downloaded installer (easy for
   the Linux `.sh`, which is a zip; the `.exe` via `innoextract`).
 - Windows: test the zip on real Windows 10/11 (window, sound, mouse

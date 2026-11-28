@@ -2,25 +2,10 @@
 cmake_minimum_required(VERSION 3.25)
 project(fg_runner LANGUAGES C CXX ASM)
 
-# CPU backend (src/cpu_backend.h): "native" runs the game on the host CPU and
-# needs a 32-bit Linux build; "unicorn" runs it in the Unicorn emulator
-# (GPL-2.0) on any 64-bit host. Default: native for 32-bit, unicorn otherwise.
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  set(FG_CPU_DEFAULT native)
-else()
-  set(FG_CPU_DEFAULT unicorn)
+# The game runs in the Unicorn x86 emulator (GPL-2.0): a 64-bit build.
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+  message(FATAL_ERROR "The runner is a 64-bit program")
 endif()
-set(FG_CPU ${FG_CPU_DEFAULT} CACHE STRING "CPU backend: native or unicorn")
-set_property(CACHE FG_CPU PROPERTY STRINGS native unicorn)
-if(FG_CPU STREQUAL "native")
-  if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4 OR NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "The native CPU backend needs a 32-bit Linux build: "
-                        "-DCMAKE_TOOLCHAIN_FILE=runner/cmake/toolchain-i686.cmake")
-  endif()
-elseif(NOT FG_CPU STREQUAL "unicorn")
-  message(FATAL_ERROR "FG_CPU must be native or unicorn")
-endif()
-message(STATUS "CPU backend: ${FG_CPU}")
 
 # Shown by --version and in the log; release builds pass the git tag.
 set(FG_VERSION "dev" CACHE STRING "Version string compiled into the runner")
@@ -82,33 +67,21 @@ target_compile_options(fg-runner PRIVATE -Wall -Wextra -Wno-unused-parameter)
 target_compile_definitions(fg-runner PRIVATE FG_VERSION="${FG_VERSION}")
 target_link_libraries(fg-runner PRIVATE PkgConfig::SDL3)
 
-if(FG_CPU STREQUAL "native")
-  target_sources(fg-runner PRIVATE src/cpu_native.cpp src/cpu_native_entry.S)
-  # Code reached from the signal handler before %gs is restored must not use
-  # the stack protector (its canary lives at %gs:0x14).
-  target_compile_options(fg-runner PRIVATE -fno-stack-protector)
-  # Absolute addressing in cpu_native_entry.S; also keeps the runner's own
-  # image at a fixed address, out of the way of the game's reserved region.
-  target_link_options(fg-runner PRIVATE -no-pie)
-  set_target_properties(fg-runner PROPERTIES POSITION_INDEPENDENT_CODE OFF)
-else()
-  target_sources(fg-runner PRIVATE src/cpu_unicorn.cpp)
-  target_compile_definitions(fg-runner PRIVATE FG_CPU_UNICORN=1)
-  # FG_UNICORN_ROOT: a Unicorn install outside the system (e.g. the static
-  # Windows build from tools/build_windows.sh); otherwise pkg-config.
-  set(FG_UNICORN_ROOT "" CACHE PATH "Unicorn install prefix (default: pkg-config)")
-  if(FG_UNICORN_ROOT)
-    find_path(UNICORN_INCLUDE unicorn/unicorn.h PATHS "${FG_UNICORN_ROOT}/include" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
-    find_library(UNICORN_LIB NAMES unicorn PATHS "${FG_UNICORN_ROOT}/lib" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
-    if(NOT UNICORN_INCLUDE OR NOT UNICORN_LIB)
-      message(FATAL_ERROR "Unicorn not found in FG_UNICORN_ROOT=${FG_UNICORN_ROOT}")
-    endif()
-    target_include_directories(fg-runner PRIVATE "${UNICORN_INCLUDE}")
-    target_link_libraries(fg-runner PRIVATE "${UNICORN_LIB}")
-  else()
-    pkg_check_modules(UNICORN REQUIRED IMPORTED_TARGET unicorn>=2.0)
-    target_link_libraries(fg-runner PRIVATE PkgConfig::UNICORN)
+target_sources(fg-runner PRIVATE src/cpu_unicorn.cpp)
+# FG_UNICORN_ROOT: a Unicorn install outside the system (e.g. the static
+# Windows build from tools/build_windows.sh); otherwise pkg-config.
+set(FG_UNICORN_ROOT "" CACHE PATH "Unicorn install prefix (default: pkg-config)")
+if(FG_UNICORN_ROOT)
+  find_path(UNICORN_INCLUDE unicorn/unicorn.h PATHS "${FG_UNICORN_ROOT}/include" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+  find_library(UNICORN_LIB NAMES unicorn PATHS "${FG_UNICORN_ROOT}/lib" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+  if(NOT UNICORN_INCLUDE OR NOT UNICORN_LIB)
+    message(FATAL_ERROR "Unicorn not found in FG_UNICORN_ROOT=${FG_UNICORN_ROOT}")
   endif()
+  target_include_directories(fg-runner PRIVATE "${UNICORN_INCLUDE}")
+  target_link_libraries(fg-runner PRIVATE "${UNICORN_LIB}")
+else()
+  pkg_check_modules(UNICORN REQUIRED IMPORTED_TARGET unicorn>=2.0)
+  target_link_libraries(fg-runner PRIVATE PkgConfig::UNICORN)
 endif()
 
 # FG_PORTABLE (Linux release builds, tools/release/linux-build.sh): the C++
