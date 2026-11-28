@@ -60,7 +60,8 @@ jobs:
         with:
           name: fantasy-general-runner-${{ env.VERSION }}
           path: |
-            dist/fantasy-general-runner-${{ env.VERSION }}-*
+            dist/fantasy-general-runner-${{ env.VERSION }}-linux-x86_64.tar.gz
+            dist/fantasy-general-runner-${{ env.VERSION }}-windows-x64.zip
             dist/SHA256SUMS-${{ env.VERSION }}.txt
           retention-days: 14
 
