@@ -69,6 +69,21 @@ tools/run.sh                 # builds the runner, extracts the CD data track, st
 FG_CPU=native tools/run.sh   # the same with the native CPU backend (32-bit Linux build)
 ```
 
+### The launcher
+
+Started without options (a double-click, the desktop entry, or
+`fg-runner` alone) the runner opens a launcher: where the game is, and
+its settings on four tabs (Game, Display, Sound, Gameplay), each naming
+the command-line option it stands for, with the equivalent command shown
+below them. Launch starts the game and saves the settings to
+`settings.ini` in the per-user folder (`~/.local/share/fg-runner/`,
+`%APPDATA%\fg-runner\`); Quit or Escape closes it. Any option skips the
+launcher and its saved settings, so command-line and scripted runs behave
+as before; `--launcher` shows it anyway, filled in with the options given.
+`tools/run.sh` passes options, so use `tools/run.sh --launcher` to see it.
+
+### In the game
+
 The game starts fullscreen (`--window` starts it in a window instead);
 Alt+Enter switches between the two. The window is resizable and
 aspect-correct. F12 saves
@@ -82,6 +97,7 @@ Useful options (after `tools/run.sh`):
 
 | Option | |
 |---|---|
+| `--launcher` | show the launcher (the default when started without options) |
 | `--window` | start in a window instead of fullscreen |
 | `--scale N` | window size (640×480 × N) |
 | `--scaling integer\|fit` | integer: exact pixels with black borders (default); fit: fills the screen, uneven pixels. Ctrl+F11 switches while running |
@@ -188,5 +204,7 @@ Wayland window (without them the runner falls back to X11 software rendering).
 ## Licence
 
 GPL-2.0-or-later (see `LICENSE`), except `runner/third_party/` (own
-licences). The Unicorn backend links Unicorn (GPL-2.0), so its builds are
+licences: stb is public domain or MIT; the launcher's fonts, Inter and
+Metamorphous, are under the SIL Open Font License 1.1, whose texts the
+release packages include). The Unicorn backend links Unicorn (GPL-2.0), so its builds are
 distributed under GPL-2.0. No game files or game code are included.

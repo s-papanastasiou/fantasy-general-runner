@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* The launcher's fonts (third_party/fonts), embedded as read-only data.
+   CMake fills in the paths (configure_file). */
+#if defined(_WIN32)
+        .section .rdata,"dr"
+#else
+        .section .rodata
+#endif
+#define FONT(name, file) \
+        .global name; name: .incbin file; \
+        .global name##_end; name##_end: .byte 0
+
+FONT(fg_font_inter_regular, "@FG_FONTS@/Inter-Regular.ttf")
+FONT(fg_font_inter_semibold, "@FG_FONTS@/Inter-SemiBold.ttf")
+FONT(fg_font_metamorphous, "@FG_FONTS@/Metamorphous-Regular.ttf")
+
+#if !defined(_WIN32)
+        .section .note.GNU-stack,"",@progbits
+#endif
