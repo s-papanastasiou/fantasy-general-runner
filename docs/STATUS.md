@@ -95,8 +95,8 @@ Not yet: a real window/sound session from the packages, real Windows.
 **CRT filter** (2026-11-28, branch `crt-filter`): DOSBox Staging's VGA
 shaders (the user's choice: "they know best"), `--crt`/launcher/Ctrl+F9;
 see "CRT filter" in `docs/RUNNER.md`. Checked offscreen (renders at
-1080p/1440p/4K, Linux and Wine identical, colours match). Not yet: on a
-real screen by hand, real Windows. The game window now uses SDL's GPU
+1080p/1440p/4K, Linux and Wine identical, colours match). The user tried
+it by hand and approved it ("looks great"). Not yet: real Windows. The game window now uses SDL's GPU
 renderer whenever Vulkan works (needed to switch the filter while
 playing); watch for driver trouble.
 
