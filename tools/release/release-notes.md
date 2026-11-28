@@ -13,4 +13,4 @@ Started this way, the runner opens a launcher: it shows where the game is (found
 - Fixed: on Windows the game could stop with an error message when you quit it.
 - The runner is a 64-bit program only (the 32-bit Linux variant is gone).
 
-`SHA256SUMS-*.txt` holds the packages' checksums. Licence: GPL-2.0-or-later; the packages contain Unicorn (GPL-2.0), SDL3 (zlib) and the fonts Inter and Metamorphous (SIL Open Font License 1.1) and DOSBox Staging's CRT shaders (MIT).
+`SHA256SUMS-*.txt` holds the packages' checksums. Licence: GPL-2.0-or-later; the packages contain Unicorn (GPL-2.0), SDL3 (zlib), the fonts Inter and Metamorphous (SIL Open Font License 1.1) and DOSBox Staging's CRT shaders (MIT).
