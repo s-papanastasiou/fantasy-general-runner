@@ -2,8 +2,8 @@
 // Idle detection for the game's busy-wait loops.
 //
 // DOS games wait by spinning: polling the keyboard (int 21h 0Bh), the PIT
-// counter or the VGA retrace bit until something changes. Natively each poll
-// is a trapped instruction, so an idle game keeps a host core fully busy.
+// counter or the VGA retrace bit until something changes. Each poll is a
+// trapped instruction, so an idle game keeps a host core fully busy.
 // A poll site that is hit again within microseconds of its last empty poll,
 // many times in a row, is a loop doing nothing else; the runner then sleeps
 // briefly before answering. Loops that do real work between polls are slower

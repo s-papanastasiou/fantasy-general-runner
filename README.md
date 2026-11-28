@@ -6,7 +6,7 @@ original GOG game files, without DOSBox.
 `fg-runner` loads the game's own `BARENA.EXE` and runs its code unchanged,
 replacing DOS/4GW, DOS, the BIOS and the PC hardware (VGA/VESA, mouse,
 timer, Sound Blaster, CD drive) with SDL3. The game's code runs in the
-Unicorn CPU emulator (default; any 64-bit host) or natively (32-bit Linux).
+Unicorn CPU emulator, as an ordinary 64-bit program on Linux and Windows.
 A few hooks smooth over speed that came from 1996 hardware (scrolling, the
 computer's moves) and add conveniences (eight-way and arrow-key scrolling).
 The goal is a ready-to-run executable for each platform that works with
@@ -62,11 +62,10 @@ Not wanting to run GOG's installer: the files can also be unpacked by hand,
 `data/noarch/game/data`) or `innoextract -d fg setup_fantasy_general_*.exe`
 (in `fg`); then choose that folder when the runner asks.
 
-## Running the game natively
+## Running the game from the repository
 
 ```sh
-tools/run.sh                 # builds the runner, extracts the CD data track, starts the game
-FG_CPU=native tools/run.sh   # the same with the native CPU backend (32-bit Linux build)
+tools/run.sh                 # builds the runner in build/, extracts the CD data track, starts the game
 ```
 
 ### The launcher
@@ -120,8 +119,8 @@ screenshot at T seconds) and `T hold KEY` / `T release KEY` for the arrow
 keys (`up`, `down`, `left`, `right`).
 
 Status: intro, menus, campaign start and the strategic map work, with CD
-music (the `MUSIC/*.ogg` tracks) and sound effects (Miles mixing natively
-into an emulated SB16 driver). Smacker videos, battles and save/load are
+music (the `MUSIC/*.ogg` tracks) and sound effects (the game's Miles
+library mixing into an emulated SB16 driver). Smacker videos, battles and save/load are
 not checked yet (the intro Smacker video plays).
 
 ## Release packages
@@ -174,14 +173,8 @@ tools/ghidra/import.sh      # extract BARENA.EXE and build ghidra-project/Fantas
 tools/ghidra.sh             # open Ghidra
 ```
 
-Runner build requirements (Fedora), default Unicorn backend: `gcc-c++ cmake
-ninja-build SDL3-devel unicorn-devel`.
-
-Native backend (`FG_CPU=native`): `gcc-c++`, `cmake`, `ninja-build`,
-`glibc-devel.i686`, `libstdc++-devel.i686`, `libatomic.i686`, `SDL3-devel.i686`.
-Runtime (32-bit client libraries): `pipewire-libs.i686` for sound;
-`mesa-dri-drivers.i686 mesa-libEGL.i686 mesa-libGL.i686` for a hardware-accelerated
-Wayland window (without them the runner falls back to X11 software rendering).
+Runner build requirements (Fedora): `gcc-c++ cmake ninja-build SDL3-devel
+unicorn-devel` (a 64-bit build; 32-bit hosts are not supported).
 
 ## Layout
 
@@ -192,12 +185,12 @@ Wayland window (without them the runner falls back to X11 software rendering).
 | `tools/ghidra/x86watcom.cspec` | Ghidra compiler spec for Watcom's register calling convention |
 | `tools/ghidra/import.sh` | Creates the Ghidra project from the game executable |
 | `tools/ghidra/scripts/` | Ghidra scripts (post-import code recovery, reports, decompile dump) |
-| `runner/` | The runner (C++20, SDL3; Unicorn or native 32-bit CPU backend) |
+| `runner/` | The runner (C++20, SDL3, Unicorn CPU emulator) |
 | `tools/run.sh`, `tools/extract_cd.py` | Build + run; extract the CD data track for drive D: |
 | `tools/build_windows.sh`, `runner/win/` | Windows cross-build and package; manifest, player README |
 | `tools/ghidra/run.py` | Run a repo Ghidra script inside the running Ghidra (via GhidraMCP) |
 | `docs/NOTES.md` | Findings about the executable and game |
-| `docs/RUNNER.md` | What the runner emulates and how, and why it is 32-bit |
+| `docs/RUNNER.md` | What the runner emulates and how |
 | `docs/STATUS.md` | Current state, how to resume, non-obvious lessons |
 | `.mcp.json` | GhidraMCP bridge for Claude Code (needs Ghidra running with the plugin enabled) |
 

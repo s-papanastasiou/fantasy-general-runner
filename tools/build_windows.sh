@@ -64,7 +64,7 @@ if [[ -f "$BUILD/CMakeCache.txt" ]] && ! grep -qx "CMAKE_HOME_DIRECTORY:INTERNAL
 fi
 cmake -S "$ROOT/runner" -B "$BUILD" -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE="$ROOT/runner/cmake/toolchain-mingw64.cmake" -DCMAKE_BUILD_TYPE=Release \
-    -DFG_CPU=unicorn -DFG_UNICORN_ROOT="$UNICORN_PREFIX" -DFG_VERSION="$VERSION" >/dev/null
+    -DFG_UNICORN_ROOT="$UNICORN_PREFIX" -DFG_VERSION="$VERSION" >/dev/null
 cmake --build "$BUILD" >/dev/null
 
 # --- package ---------------------------------------------------------------

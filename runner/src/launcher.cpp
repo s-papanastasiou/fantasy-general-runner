@@ -122,24 +122,18 @@ private:
 };
 
 bool Launcher::open_window() {
-    auto attempt = [&](const char* driver) {
-        if (driver) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, driver);
-        SDL_SetHint(SDL_HINT_APP_ID, "fantasy-general-runner");
-        SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");
-        if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
-            FG_LOG("launcher: SDL video: %s", SDL_GetError());
-            return false;
-        }
-        if (SDL_CreateWindowAndRenderer("Fantasy General", int(kW), int(kH),
-                                        SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY, &win_, &ren_))
-            return true;
-        FG_LOG("launcher: no renderer with %s video (%s)", SDL_GetCurrentVideoDriver(), SDL_GetError());
-        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+    SDL_SetHint(SDL_HINT_APP_ID, "fantasy-general-runner");
+    SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");
+    if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
+        FG_LOG("launcher: SDL video: %s", SDL_GetError());
         return false;
-    };
-    // As for the game window (ui.cpp): a 32-bit runner may have no renderer
-    // under Wayland but X11 software rendering still works.
-    return attempt(nullptr) || attempt("x11");
+    }
+    if (SDL_CreateWindowAndRenderer("Fantasy General", int(kW), int(kH),
+                                    SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY, &win_, &ren_))
+        return true;
+    FG_LOG("launcher: no window with %s video: %s", SDL_GetCurrentVideoDriver(), SDL_GetError());
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
+    return false;
 }
 
 // Window size for the display's scale, kept within the usable area.

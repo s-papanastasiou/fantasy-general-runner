@@ -197,7 +197,7 @@ bool on_unit_move_step(Cpu& cpu) {
 // RedrawBattleMap (0x85a45) draws the whole map at the view origin 0xe93d8
 // (x, y words). On the computer's turn the game recentres the view on each
 // unit it considers and redraws, several times in a row; on 1996 hardware
-// each full redraw took a sizeable fraction of a second, natively the views
+// each full redraw took a sizeable fraction of a second, today the views
 // flick past like a fast scroll. Keep each view of the computer's turn on
 // screen at least g_ai_view_ns before drawing a different one.
 bool on_redraw_battle_map(Cpu&) {
@@ -364,37 +364,6 @@ void deliver_pending(Cpu& cpu) {
     }
 }
 
-namespace {
-
-// DOS/4GW gives protected-mode programs selector 0040h for the BIOS data
-// area (real-mode segment 0040h). It is a GDT selector, which the runner
-// cannot provide, so loading it faults; the fault handler loads this LDT
-// alias of the same memory instead. The game uses it when it quits
-// (0x58081: reads the CRTC port at 0040:0063 to wait for retraces).
-constexpr uint16_t kBiosDataSel = 0x40;
-
-uint16_t bios_data_alias() {
-    static uint16_t sel = g_machine->ldt.make(0x400, 0xFFFF, false);
-    return sel;
-}
-
-void set_sreg(Cpu& cpu, int index, uint16_t v) {
-    switch (index) {
-    case 0: cpu.set_es(v); break;
-    case 3: cpu.set_ds(v); break;
-    case 4: cpu.set_fs(v); break;
-    case 5: cpu.set_gs(v); break;
-    default: break;  // cs/ss: not loaded this way
-    }
-}
-
-uint16_t reg16(const Cpu& cpu, int index) {
-    const uint32_t r[8] = {cpu.eax(), cpu.ecx(), cpu.edx(), cpu.ebx(), cpu.esp(), cpu.ebp(), cpu.esi(), cpu.edi()};
-    return static_cast<uint16_t>(r[index & 7]);
-}
-
-}  // namespace
-
 void handle_gp(Cpu& cpu) {
     Machine& m = *g_machine;
     uint32_t pc = m.linear(cpu.cs(), cpu.eip());
@@ -476,26 +445,6 @@ void handle_gp(Cpu& cpu) {
         deliver_pending(cpu);
         return;
     case 0xF4: break;                                                  // hlt: treat as a no-op wait
-    case 0x8E: {                                                       // mov sreg, r16 (0040h only)
-        uint8_t modrm = p[len++];
-        int sreg = (modrm >> 3) & 7;
-        if ((modrm >> 6) != 3 || reg16(cpu, modrm & 7) != kBiosDataSel || sreg == 1 || sreg == 2 || sreg > 5)
-            fatal_in_game(cpu, "general protection fault on unhandled instruction %02x %02x %02x %02x",
-                          p[0], p[1], p[2], p[3]);
-        set_sreg(cpu, sreg, bios_data_alias());
-        break;
-    }
-    case 0x07: case 0x1F: case 0x0F: {                                 // pop es/ds/fs/gs (0040h only)
-        int sreg = op == 0x07 ? 0 : op == 0x1F ? 3 : p[len] == 0xA1 ? 4 : p[len] == 0xA9 ? 5 : -1;
-        uint32_t sp = m.linear(cpu.ss(), cpu.esp());
-        if (sreg < 0 || static_cast<uint16_t>(m.as.read<uint32_t>(sp)) != kBiosDataSel)
-            fatal_in_game(cpu, "general protection fault on unhandled instruction %02x %02x %02x %02x",
-                          p[0], p[1], p[2], p[3]);
-        if (op == 0x0F) ++len;
-        set_sreg(cpu, sreg, bios_data_alias());
-        cpu.set_esp(cpu.esp() + (opsize ? 2 : 4));
-        break;
-    }
     default:
         fatal_in_game(cpu, "general protection fault on unhandled instruction %02x %02x %02x %02x",
                       p[0], p[1], p[2], p[3]);

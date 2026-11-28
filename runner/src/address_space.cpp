@@ -20,16 +20,14 @@ constexpr uint32_t kPage = 0x1000;
 uint32_t page_up(uint32_t v) { return (v + kPage - 1) & ~(kPage - 1); }
 }  // namespace
 
-bool AddressSpace::init(bool all_accessible) {
-    all_accessible_ = all_accessible;
+bool AddressSpace::init() {
+    // The whole region is readable and writable from the start (the emulator
+    // keeps its own view of what is mapped); pages cost memory only once touched.
 #ifdef _WIN32
-    // Only the emulator backends run on Windows: the whole region is usable.
-    // Pages cost memory only once touched.
-    void* p = all_accessible ? VirtualAlloc(nullptr, kSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE) : nullptr;
+    void* p = VirtualAlloc(nullptr, kSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     if (!p) {
 #else
-    int prot = all_accessible ? PROT_READ | PROT_WRITE : PROT_NONE;
-    void* p = mmap(nullptr, kSize, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    void* p = mmap(nullptr, kSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
     if (p == MAP_FAILED) {
 #endif
         FG_LOG("cannot reserve %u MB for the game address space", kSize >> 20);
@@ -48,15 +46,7 @@ uint32_t AddressSpace::linear_of(const void* p) const {
 bool AddressSpace::commit(uint32_t lin, uint32_t size) {
     uint32_t start = lin & ~(kPage - 1);
     uint32_t end = page_up(lin + size);
-    if (!contains(start, end - start)) return false;
-    if (all_accessible_) return true;
-#ifdef _WIN32
-    return false;
-#else
-    // Executable too: the game writes into its code object and may run code
-    // placed in data (DOS memory callbacks, self-modifying startup code).
-    return mprotect(base_ + start, end - start, PROT_READ | PROT_WRITE | PROT_EXEC) == 0;
-#endif
+    return contains(start, end - start);  // the whole region is accessible (init)
 }
 
 void AddressSpace::release(uint32_t lin, uint32_t size) {
@@ -65,7 +55,6 @@ void AddressSpace::release(uint32_t lin, uint32_t size) {
     VirtualFree(host(lin), size, MEM_DECOMMIT);
     VirtualAlloc(host(lin), size, MEM_COMMIT, PAGE_READWRITE);
 #else
-    if (!all_accessible_) mprotect(host(lin), size, PROT_NONE);
     madvise(host(lin), size, MADV_DONTNEED);  // reads as zeros from now on
 #endif
     cpu_code_written(lin, size);
