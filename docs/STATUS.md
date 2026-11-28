@@ -81,18 +81,20 @@ holding off the timer interrupts that draw the cursor; it now sleeps at
 most 1 ms per poll. Measured: timer interrupts during a fade 361/s with
 gaps under 4 ms (before 242/s, 17 ms). The user confirmed it looks good.
 
-**Release packages** (2026-11-28, branch `release-packaging`):
+**Release packages** (2026-11-28, PR #1):
 `tools/build_release.sh` builds the Linux tar.gz (Ubuntu 22.04 container;
 glibc 2.35+, SDL3 bundled) and the Windows zip (Fedora 45 container); the
 GitHub workflow runs it on pull requests (artifact) and `v*` tags
-(GitHub Release). Runner: `--version`, log file in the per-user folder,
+(GitHub Release). Released: v0.5.0, v0.6.0 (launcher, music volume,
+Ctrl+F11, quit fix), v0.7.0 (CRT filter, Windows quit fix, 64-bit only),
+all on 2026-11-28. Runner: `--version`, log file in the per-user folder,
 errors in a message box, Windows GUI subsystem and icon. Checked: the
 Linux package runs the headless battle route in bare Ubuntu 22.04 and
 Debian 12 containers with screenshots identical to the Fedora host; the
 Windows package under Wine (log file, `--version` from `wine cmd`).
 Not yet: a real window/sound session from the packages, real Windows.
 
-**CRT filter** (2026-11-28, branch `crt-filter`): DOSBox Staging's VGA
+**CRT filter** (2026-11-28, PR #11, in v0.7.0): DOSBox Staging's VGA
 shaders (the user's choice: "they know best"), `--crt`/launcher/Ctrl+F9;
 see "CRT filter" in `docs/RUNNER.md`. Checked offscreen (renders at
 1080p/1440p/4K, Linux and Wine identical, colours match). The user tried
@@ -100,7 +102,7 @@ it by hand and approved it ("looks great"). Not yet: real Windows. The game wind
 renderer whenever Vulkan works (needed to switch the filter while
 playing); watch for driver trouble.
 
-**Launcher** (2026-11-28, branch `launcher`): started without options
+**Launcher** (2026-11-28, PR #7, in v0.6.0): started without options
 the runner shows a launcher (gilded-parchment colours after the game's
 menus, Metamorphous and Inter fonts) with the game folder and every
 setting; it saves `settings.ini` on Launch. Details in "Launcher" in
