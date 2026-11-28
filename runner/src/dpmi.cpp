@@ -25,6 +25,17 @@ void fail(Cpu& cpu, uint16_t err) {
 constexpr uint16_t kErrUnsupported = 0x8001, kErrNoDescriptors = 0x8011, kErrNoMemory = 0x8013,
                    kErrInvalidSelector = 0x8022, kErrInvalidHandle = 0x8023, kErrInvalidValue = 0x8021;
 
+// DPMI 0001h/0101h: "any segment registers which contain the selector
+// being freed are zeroed". The game frees a DOS block while GS still holds
+// its selector when it quits; left loaded, the next timer interrupt's
+// push gs/pop gs faults on the freed descriptor.
+void zero_freed_sreg(Cpu& cpu, uint16_t sel) {
+    if (cpu.ds() == sel) cpu.set_ds(0);
+    if (cpu.es() == sel) cpu.set_es(0);
+    if (cpu.fs() == sel) cpu.set_fs(0);
+    if (cpu.gs() == sel) cpu.set_gs(0);
+}
+
 // DOS memory blocks: selector -> segment (DPMI 0100h).
 std::map<uint16_t, uint16_t> g_dos_blocks;
 
@@ -55,7 +66,11 @@ void int31_dpmi(Cpu& cpu) {
         ok(cpu);
         return;
     }
-    case 0x0001: if (ldt.free(cpu.bx())) ok(cpu); else fail(cpu, kErrInvalidSelector); return;
+    case 0x0001:
+        if (!ldt.free(cpu.bx())) { fail(cpu, kErrInvalidSelector); return; }
+        zero_freed_sreg(cpu, cpu.bx());
+        ok(cpu);
+        return;
     case 0x0002: {  // segment to descriptor
         uint16_t sel = ldt.make(uint32_t(cpu.bx()) << 4, 0xFFFF, false);
         if (!sel) { fail(cpu, kErrNoDescriptors); return; }
@@ -101,6 +116,7 @@ void int31_dpmi(Cpu& cpu) {
         if (it == g_dos_blocks.end()) { fail(cpu, 9); return; }
         m.as.conv_free(it->second);
         ldt.free(it->first);
+        zero_freed_sreg(cpu, it->first);
         g_dos_blocks.erase(it);
         ok(cpu);
         return;

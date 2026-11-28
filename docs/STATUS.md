@@ -199,6 +199,12 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
   (`SDL_SetWindowMouseRect`). Fullscreen captures on focus, a window on a
   click into the image; Ctrl+F10 toggles (DOSBox's key); losing focus
   releases. The title bar shows the state.
+- **Quitting the game** (fixed 2026-11-28): on the way out it loads
+  DOS/4GW's BIOS-data selector `0040h` (`0x58081` reads `0040:0063` to
+  wait for retraces); `handle_gp` substitutes an LDT alias (base 0x400)
+  for `mov`/`pop` of 0040h. It also frees a DOS block (DPMI 0101h) whose
+  selector is still in GS; DPMI says freeing zeroes such registers, which
+  the runner now does, or the next timer interrupt's `pop gs` faults.
 - **Wayland + 32-bit:** with no 32-bit GL/Vulkan the Wayland backend has no
   renderer at all; the runner retries with X11 software rendering.
 
