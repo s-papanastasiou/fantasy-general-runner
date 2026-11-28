@@ -237,7 +237,7 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
   - Keyboard scrolling in battle (if any) may bypass the scroll hook.
   - Combat animations and the rest of a full battle.
   - Window snapping after a manual resize (Wayland/X11 window managers).
-  - Possible addition: a hotkey to switch between integer and fit scaling.
+  - Scaling hotkey: done (Ctrl+F11, 2026-11-28; confirmed by the user).
 
 ### Finding what the game is doing
 
