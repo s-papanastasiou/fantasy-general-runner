@@ -18,7 +18,7 @@ class CdAudio {
 public:
     // Opens an audio stream (SDL audio must be initialised). Call once from
     // the main thread after the CD track list is known.
-    // `music_volume` (0..1, --music-volume) scales all CD audio; the game
+    // `music_volume` (0..1; --music-volume allows 0.1..1) scales all CD audio; the game
     // itself never sets the CD volume (only plays and stops tracks).
     bool init(const std::vector<CdTrack>& tracks, float music_volume = 1.0f);
     void shutdown();
