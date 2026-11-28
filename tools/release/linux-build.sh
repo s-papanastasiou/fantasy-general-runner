@@ -116,6 +116,7 @@ cp "$ROOT/runner/linux/fg-runner.png" "$PKG/"
 install -m 755 "$ROOT/runner/linux/install-desktop-entry.sh" "$PKG/"
 cp "$ROOT/runner/linux/README-linux.txt" "$PKG/README.txt"
 cp "$ROOT/LICENSE" "$PKG/LICENSE.txt"
+cp "$ROOT/runner/third_party/fonts/OFL-Inter.txt" "$ROOT/runner/third_party/fonts/OFL-Metamorphous.txt" "$PKG/"
 cp "$WORK/sdl3-src/LICENSE.txt" "$PKG/LICENSE-SDL3.txt"
 cp "$WORK/unicorn-src/COPYING" "$PKG/LICENSE-Unicorn.txt"
 

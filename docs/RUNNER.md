@@ -321,6 +321,31 @@ would not help, since an LCD's own scaler resamples any non-native mode
 running (back to integer, a window snaps to a multiple at once). 640x400 modes (only the brief text screen at
 start) are stretched to 4:3 like a CRT, so their pixels cannot be exact.
 
+## Launcher
+
+`launcher.cpp`: a window shown when the runner starts without options or
+with `--launcher` (not headless). Drawn with SDL's renderer, no toolkit:
+an immediate-mode UI in layout units (760 x 660) with the renderer scaled
+to the display (`SDL_GetWindowDisplayScale`, capped to the usable area),
+so it is sharp on scaled desktops. Text: stb_truetype rasterises each
+font and size once into an atlas at the real pixel size
+(`launcher_text.cpp`); the fonts (Inter, Metamorphous; OFL) are embedded
+with `.incbin` (`launcher_fonts.S.in`). Folder pickers are SDL's
+asynchronous `SDL_ShowOpenFolderDialog`; the answer is polled each frame.
+Like the game window it falls back to X11 when Wayland has no renderer
+(32-bit native build).
+
+Settings (`settings.cpp`): one per command-line option, saved on Launch
+to `<pref>/settings.ini` (`key = value`, keys named like the options).
+They are read only when the launcher shows, so a command line always
+means what it says; `settings_args` gives the options for the launcher's
+"Same as running" line and the log. The game folder keeps its own file
+(`game-dir.txt`), written when the player picks one with Browse.
+
+Checking it without a person: `FG_LAUNCHER_SHOTS=PREFIX
+SDL_VIDEO_DRIVER=offscreen fg-runner [--launcher options]` draws each tab
+into `PREFIX-N.png` and quits (works under Wine too).
+
 ## Libraries that may be replaced wholesale instead of emulated
 
 - **Miles AIL 3** (`0x4cc60`–`0x58200`): hook its API entry points and

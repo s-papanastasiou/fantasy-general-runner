@@ -54,14 +54,27 @@ add_executable(fg-runner
   src/cd_extract.cpp
   src/dig_driver.cpp
   src/game_locate.cpp
+  src/settings.cpp
+  src/launcher.cpp
+  src/launcher_text.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/launcher_fonts.S
   src/log.cpp
 )
+# The launcher's fonts, embedded with .incbin (third_party/fonts/README.md).
+set(FG_FONTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fonts")
+configure_file(src/launcher_fonts.S.in launcher_fonts.S @ONLY)
+set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/launcher_fonts.S PROPERTIES OBJECT_DEPENDS
+  "${FG_FONTS}/Inter-Regular.ttf;${FG_FONTS}/Inter-SemiBold.ttf;${FG_FONTS}/Metamorphous-Regular.ttf")
 target_include_directories(fg-runner PRIVATE src third_party/stb)
 
 # Ogg Vorbis decoder for the CD-audio tracks (third_party/stb/README.md).
 add_library(stb_vorbis STATIC third_party/stb/stb_vorbis.c)
 target_compile_options(stb_vorbis PRIVATE -w)
 target_link_libraries(fg-runner PRIVATE stb_vorbis)
+# TrueType rasteriser for the launcher (third_party/stb/README.md).
+add_library(stb_truetype STATIC third_party/stb/stb_truetype.c)
+target_compile_options(stb_truetype PRIVATE -w)
+target_link_libraries(fg-runner PRIVATE stb_truetype)
 if(NOT WIN32)
   target_link_libraries(fg-runner PRIVATE m)
 endif()

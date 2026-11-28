@@ -21,6 +21,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <cmath>
 #include <atomic>
 #include <cstdlib>
 #include <cstring>
@@ -36,9 +37,11 @@
 #include "dig_driver.h"
 #include "dos_fs.h"
 #include "game_locate.h"
+#include "launcher.h"
 #include "log.h"
 #include "machine.h"
 #include "services.h"
+#include "settings.h"
 #include "ui.h"
 
 using namespace fg;
@@ -138,6 +141,27 @@ int main(int argc, char** argv) {
     double ai_step_ms = 10;
     double ai_view_ms = 200;
     double music_volume = 100;  // percent
+    // The launcher: started without options (a double-click, the desktop
+    // entry) or with --launcher. Only then are its saved settings used;
+    // options given with --launcher override them.
+    bool want_launcher = argc == 1;
+    for (int i = 1; i < argc && std::string(argv[i]) != "--"; ++i)
+        if (std::string(argv[i]) == "--launcher") want_launcher = true;
+    Settings settings = want_launcher ? load_settings() : Settings{};
+    auto use_settings = [&](const Settings& st) {
+        save_dir = st.save_dir;
+        save_dir_given = !st.save_dir.empty();
+        ui.fullscreen = st.fullscreen;
+        ui.scale = st.scale;
+        ui.integer_scale = st.integer_scale;
+        music_volume = st.music_volume;
+        sound = st.sound;
+        original_scrolling = st.original_scrolling;
+        scroll_step_ms = st.scroll_ms;
+        ai_step_ms = st.ai_move_ms;
+        ai_view_ms = st.ai_view_ms;
+    };
+    use_settings(settings);
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         if (a == "--game-dir" && i + 1 < argc) game_dir = argv[++i];
@@ -165,6 +189,7 @@ int main(int argc, char** argv) {
             if (music_volume != v) FG_LOG("--music-volume %g: using %g (10-100)", v, music_volume);
         }
         else if (a == "--scale" && i + 1 < argc) ui.scale = std::max(1, std::atoi(argv[++i]));
+        else if (a == "--launcher") {}
         else if (a == "--version") {
             std::printf("fg-runner %s\n", FG_VERSION);
             return 0;
@@ -174,7 +199,7 @@ int main(int argc, char** argv) {
             for (++i; i < argc; ++i) game_args += (game_args.empty() ? "" : " ") + std::string(argv[i]);
         } else {
             std::fprintf(stderr,
-                         "usage: %s [--version] [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [--scale N] [--window|--fullscreen (default)] [--headless] [--mute|--audio] [--no-sound]\n"
+                         "usage: %s [--version] [--launcher (the default with no options)] [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [--scale N] [--window|--fullscreen (default)] [--headless] [--mute|--audio] [--no-sound]\n"
                          "          [--music-volume PERCENT (CD music, 10-100, default 100; off: the game's option; sound effects unchanged)]\n"
                          "          [--scaling integer|fit (default integer: exact pixels; Ctrl+F11 switches)]\n"
                          "          [--scroll-ms MS (battle-map scroll step interval, default 120)]\n"
@@ -198,6 +223,38 @@ int main(int argc, char** argv) {
         report_errors(ui.headless);
         return 1;
     };
+    if (want_launcher && !ui.headless) {
+        // The settings as the options left them, for the launcher to show.
+        settings.save_dir = save_dir_given ? save_dir : "";
+        settings.fullscreen = ui.fullscreen;
+        settings.scale = ui.scale;
+        settings.integer_scale = ui.integer_scale;
+        settings.music_volume = int(std::lround(music_volume));
+        settings.sound = sound;
+        settings.original_scrolling = original_scrolling;
+        settings.scroll_ms = int(std::lround(scroll_step_ms));
+        settings.ai_move_ms = int(std::lround(ai_step_ms));
+        settings.ai_view_ms = int(std::lround(ai_view_ms));
+        std::string dir = game_dir.empty() ? locate_game_dir() : game_dir_in(game_dir);
+        switch (run_launcher(settings, dir)) {
+        case LauncherResult::Quit:
+            FG_LOG("launcher: quit");
+            return 0;
+        case LauncherResult::Launch:
+            save_settings(settings);
+            use_settings(settings);
+            game_dir = dir;
+            FG_LOG("launcher: launch with:%s", [&] {
+                std::string a;
+                for (const std::string& x : settings_args(settings)) a += " " + x;
+                return a.empty() ? std::string(" defaults") : a;
+            }().c_str());
+            break;
+        case LauncherResult::NoWindow:
+            FG_LOG("launcher: no window; starting the game directly");
+            break;
+        }
+    }
     if (!game_dir.empty()) {
         std::string d = game_dir_in(game_dir);  // the install folder will do, too
         if (d.empty()) return fail("Fantasy General (EXE\\BARENA.EXE) was not found in " + game_dir + ".");

@@ -16,13 +16,21 @@ Any folder will do; the default is C:\GOG Games\Fantasy General.
 
 Starting
 --------
-Double-click fg-runner.exe. The game starts fullscreen; Alt+Enter switches
-to a window and back (--window starts in a window). It finds the game by
-itself through the registry entry GOG's installer writes, next to
-fg-runner.exe, one folder up, and in the usual GOG folders. If it cannot,
-it asks you for the folder the game was installed to and remembers your
-choice (%APPDATA%\fg-runner\game-dir.txt; delete it to choose again). To
-pick the folder from a command prompt instead:
+Double-click fg-runner.exe. The launcher opens: it shows where the game
+is and its settings (display, music volume, sound, scrolling and the
+computer's speed), each with the command-line option it stands for.
+Launch starts the game with them and remembers them
+(%APPDATA%\fg-runner\settings.ini); Quit or Escape closes it. Started
+from a command prompt with any option, the runner skips the launcher and
+its settings and starts the game directly (--launcher shows it anyway).
+
+The game starts fullscreen unless you choose a window; Alt+Enter switches
+while playing. It finds the game by itself through the registry entry
+GOG's installer writes, next to fg-runner.exe, one folder up, and in the
+usual GOG folders. If it cannot, choose the folder the game was installed
+to with Browse in the launcher (without the launcher, the runner asks for
+it); the choice is remembered (%APPDATA%\fg-runner\game-dir.txt; delete
+it to choose again). To pick the folder from a command prompt instead:
 
     fg-runner.exe --game-dir "D:\Games\Fantasy General"
 
@@ -42,6 +50,7 @@ Keys
 ----
 Alt+Enter   fullscreen on/off
 Ctrl+F10    release / capture the mouse (a click into the game captures it)
+Ctrl+F11    integer / fit scaling
 F12         screenshot (fg-screenshot.png)
 Arrow keys  scroll the battle map (two at once: diagonally)
 
@@ -58,15 +67,20 @@ Options
                        higher is slower, 0 = as fast as possible)
 --ai-view-ms MS        on the computer's turn, how long each map view
                        stays on screen at least (default 200)
+--music-volume P       music volume in percent, 10-100 (default 100); to
+                       silence it, switch music off in the game
 --mute                 no audio
 --no-sound             no sound effects
 --cd-dir DIR           use an already extracted CD data track as drive D:
 --save-dir DIR         keep saved games in DIR
+--launcher             show the launcher (the default with no options)
 --version              print the version (from a command prompt)
 
 Licence
 -------
 GPL-2.0-or-later; see LICENSE.txt. This program contains the Unicorn CPU
 emulator 2.1.4 (GPL-2.0, https://github.com/unicorn-engine/unicorn) and uses
-SDL3 (zlib licence, https://libsdl.org). The complete source code of this
+SDL3 (zlib licence, https://libsdl.org). It contains the launcher's fonts
+Inter and Metamorphous (SIL Open Font License 1.1, OFL-Inter.txt and
+OFL-Metamorphous.txt). The complete source code of this
 program is available from whoever gave you this copy, as the GPL requires.
