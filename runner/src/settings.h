@@ -14,6 +14,7 @@ struct Settings {
     bool fullscreen = true;        // --window when false
     int scale = 2;                 // --scale
     bool integer_scale = true;     // --scaling integer|fit
+    bool crt = false;              // --crt
     int music_volume = 100;        // --music-volume, 10..100
     bool sound = true;             // --no-sound when false
     bool original_scrolling = false;  // --original-scrolling

@@ -52,6 +52,7 @@ Keys
 Alt+Enter   fullscreen on/off
 Ctrl+F10    release / capture the mouse (a click into the game captures it)
 Ctrl+F11    integer / fit scaling
+Ctrl+F9     CRT filter on / off
 F12         screenshot (fg-screenshot.png)
 Arrow keys  scroll the battle map (two at once: diagonally)
 
@@ -59,6 +60,8 @@ Options
 -------
 --window               start in a window instead of fullscreen
 --scale N              window size (640x480 x N)
+--crt                  CRT filter: DOSBox Staging's VGA monitor look (needs
+                       Vulkan; best at 1440p or 4K, at least 1080p)
 --scaling integer|fit  exact pixels (default) or fill the window
 --scroll-ms MS         battle-map scroll speed (default 120)
 --original-scrolling   map edges scroll as in the original game (the
@@ -83,5 +86,6 @@ GPL-2.0-or-later; see LICENSE.txt. This program contains the Unicorn CPU
 emulator 2.1.4 (GPL-2.0, LICENSE-Unicorn.txt) and SDL 3.4 (zlib licence,
 LICENSE-SDL3.txt, lib/libSDL3.so.0), and the launcher's fonts Inter and
 Metamorphous (SIL Open Font License 1.1, OFL-Inter.txt and
-OFL-Metamorphous.txt). The complete source code of this
+OFL-Metamorphous.txt), and DOSBox Staging's CRT shaders (MIT,
+LICENSE-shaders.txt). The complete source code of this
 program is available from whoever gave you this copy, as the GPL requires.

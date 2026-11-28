@@ -319,6 +319,33 @@ would not help, since an LCD's own scaler resamples any non-native mode
 running (back to integer, a window snaps to a multiple at once). 640x400 modes (only the brief text screen at
 start) are stretched to 4:3 like a CRT, so their pixels cannot be exact.
 
+## CRT filter
+
+`--crt`, the launcher or Ctrl+F9: DOSBox Staging's VGA monitor shaders
+(MIT, `runner/shaders/`, ported unchanged apart from the declarations; see
+the README there). `crt.cpp` picks the look like DOSBox Staging's
+`crt-auto` for a 640x480 VGA game, by whole screen rows per game line:
+4+ `crt-hyllian` preset `vga-4k`, 3 `vga-1440p`, exactly 2 `vga-1080p`,
+fewer none. While on, the picture is scaled by whole numbers (as DOSBox
+does for these shaders); the 640x400 text screen at start is not filtered.
+
+How it runs: the game window uses SDL's GPU renderer on Vulkan
+(`SDL_HINT_GPU_DRIVER=vulkan`), falling back to SDL's usual renderer (no
+filter) without Vulkan; `$SDL_RENDER_DRIVER` still overrides. The shaders
+are SPIR-V (glslang at build time, embedded with `.incbin`) and run as a
+custom render state (`SDL_CreateGPURenderState`, SDL 3.4) only while the
+game image is drawn; parameters go in a uniform block (set 3), the texture
+in set 2. Direct3D 12 would need DXIL, which needs Microsoft's DXC; not
+done.
+
+Checking it without a person: `FG_CRT_SHOTS=PREFIX` with `--crt`, a window
+(`SDL_VIDEO_DRIVER=offscreen` works) and `--screenshot` also writes the
+filtered image as on 1080p, 1440p and 4K screens (`PREFIX-1080p.png` ...,
+drawn offscreen and read back; alpha ignored). Checked 2026-11-28: Linux
+and the Windows build under Wine give the same images; average colours
+match the raw image (1080p about 5% darker). Viewed scaled down, the
+phosphor mask makes the picture look pink; at 1:1 on a screen it blends.
+
 ## Launcher
 
 `launcher.cpp`: a window shown when the runner starts without options or

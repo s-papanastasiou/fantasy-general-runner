@@ -362,21 +362,29 @@ void Launcher::tab_display(float y) {
     if (c >= 0) s_.fullscreen = c == 0;
     y = hint(y + 48, "Alt+Enter switches while playing. --window");
 
-    y = label_row(y + 20, "Window size");
-    std::vector<std::string> sizes{"1×", "2×", "3×", "4×"};
-    if (s_.scale > 4) sizes.push_back(std::to_string(s_.scale) + "×");
+    // Window size and scaling side by side.
+    y += 20;
+    std::vector<std::string> sizes{"1\u00d7", "2\u00d7", "3\u00d7", "4\u00d7"};
+    if (s_.scale > 4) sizes.push_back(std::to_string(s_.scale) + "\u00d7");
+    text(f_.label, "Window size", kPad, y, kText);
+    float row = y + f_.label.line_height() + 4;
     c = -1;
-    segmented(kPad, y, sizes, s_.scale > 4 ? 4 : s_.scale - 1, 40, c);
+    float w = segmented(kPad, row, sizes, s_.scale > 4 ? 4 : s_.scale - 1, 40, c);
     if (c >= 0 && c < 4) s_.scale = c + 1;
-    y = hint(y + 48, "640×480 times this, limited to what fits the screen. --scale");
-
-    y = label_row(y + 20, "Scaling");
+    float x2 = kPad + w + 28;
+    text(f_.label, "Scaling", x2, y, kText);
     c = -1;
-    segmented(kPad, y, {"Integer (sharp)", "Fit (fills screen)"}, s_.integer_scale ? 0 : 1, 50, c);
+    segmented(x2, row, {"Integer (sharp)", "Fit (fills screen)"}, s_.integer_scale ? 0 : 1, 50, c);
     if (c >= 0) s_.integer_scale = c == 0;
-    hint(y + 48, std::string(s_.integer_scale ? "Exact pixels, black borders."
-                                              : "Fills the screen at 4:3, slightly uneven pixels.") +
-                     " Ctrl+F11 switches while playing. --scaling");
+    y = hint(row + 48, std::string("640\u00d7480 times the size, as fits the screen. ") +
+                           (s_.integer_scale ? "Exact pixels, black borders." : "Fills the screen, uneven pixels.") +
+                           " Ctrl+F11 switches. --scale --scaling");
+
+    y = label_row(y + 20, "CRT filter");
+    c = -1;
+    segmented(kPad, y, {"Off", "VGA monitor"}, s_.crt ? 1 : 0, 55, c);
+    if (c >= 0) s_.crt = c == 1;
+    hint(y + 48, "DOSBox Staging's VGA shaders: needs Vulkan; best at 1440p or 4K, at least 1080p. Ctrl+F9 switches. --crt");
 }
 
 void Launcher::tab_sound(float y) {

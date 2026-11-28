@@ -14,6 +14,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 if [[ "$(id -u)" == 0 ]] && command -v dnf >/dev/null; then
     printf '\033[1;34m==>\033[0m %s\n' "installing build packages" >&2
-    dnf install -y -q mingw64-gcc-c++ mingw64-SDL3 cmake ninja-build zip curl binutils pkgconf-pkg-config >/dev/null
+    dnf install -y -q mingw64-gcc-c++ mingw64-SDL3 cmake ninja-build zip curl binutils pkgconf-pkg-config glslang >/dev/null
 fi
 exec "$ROOT/tools/build_windows.sh" "$VERSION"

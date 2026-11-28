@@ -154,6 +154,7 @@ int main(int argc, char** argv) {
         ui.fullscreen = st.fullscreen;
         ui.scale = st.scale;
         ui.integer_scale = st.integer_scale;
+        ui.crt = st.crt;
         music_volume = st.music_volume;
         sound = st.sound;
         original_scrolling = st.original_scrolling;
@@ -190,6 +191,7 @@ int main(int argc, char** argv) {
         }
         else if (a == "--scale" && i + 1 < argc) ui.scale = std::max(1, std::atoi(argv[++i]));
         else if (a == "--launcher") {}
+        else if (a == "--crt") ui.crt = true;
         else if (a == "--version") {
             std::printf("fg-runner %s\n", FG_VERSION);
             return 0;
@@ -201,6 +203,7 @@ int main(int argc, char** argv) {
             std::fprintf(stderr,
                          "usage: %s [--version] [--launcher (the default with no options)] [--game-dir DIR] [--cd-dir DIR] [--save-dir DIR] [--scale N] [--window|--fullscreen (default)] [--headless] [--mute|--audio] [--no-sound]\n"
                          "          [--music-volume PERCENT (CD music, 10-100, default 100; off: the game's option; sound effects unchanged)]\n"
+                         "          [--crt (CRT filter: DOSBox Staging's VGA monitor shaders; needs Vulkan; Ctrl+F9 switches)]\n"
                          "          [--scaling integer|fit (default integer: exact pixels; Ctrl+F11 switches)]\n"
                          "          [--scroll-ms MS (battle-map scroll step interval, default 120)]\n"
                          "          [--original-scrolling (sides scroll diagonally, as in the original game)]\n"
@@ -229,6 +232,7 @@ int main(int argc, char** argv) {
         settings.fullscreen = ui.fullscreen;
         settings.scale = ui.scale;
         settings.integer_scale = ui.integer_scale;
+        settings.crt = ui.crt;
         settings.music_volume = int(std::lround(music_volume));
         settings.sound = sound;
         settings.original_scrolling = original_scrolling;
