@@ -1,6 +1,6 @@
 # Project status and how to pick it up
 
-Last updated 2026-11-27.
+Last updated 2026-11-28.
 
 ## Where things stand
 
@@ -213,12 +213,10 @@ Menu coordinates: Start Game (548,400), Mini-Campaign (85,47).
   macOS not started. Smaller: verify `ins`/`outs` under Unicorn; `uc_close` on exit.
 - Publishing: **public** on GitHub, `s-papanastasiou/fantasy-general-runner`
   (2026-11-28). History starts from one commit of the code as of
-  2026-11-27; the earlier local history is only on the local branch
-  `pre-github-history` (never push it: it carries the personal email).
-  Commits use the GitHub no-reply address (set in this repo's git config).
-  Before going public the repo was recreated so that no reachable commit
-  carries the personal email; the first private copy is
-  `fantasy-general-runner-old` (private; can be deleted). Kept on purpose:
+  2026-11-27; the earlier local history and the first private copy of the
+  repository have both been deleted. Commits use the GitHub no-reply
+  address (set in this repo's git config); no reachable commit carries the
+  personal email. Kept on purpose:
   the README screenshots (game artwork), `docs/NOTES.md` (game internals,
   no game code), the 18-byte mouse routine pattern in `runner/src/input.cpp`.
   The runner and tools contain no game code and are licensed
