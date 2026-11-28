@@ -102,8 +102,8 @@ setting; it saves `settings.ini` on Launch. Details in "Launcher" in
 `docs/RUNNER.md`; the user picked the look from mockups (canvas
 "Fantasy General launcher mockup", variant A2). Checked: off-screen
 renders of every tab (Unicorn, native, Windows under Wine), game not
-found, long command lines; command-line runs unchanged. Not yet: by hand
-(clicks, sliders, folder dialogs, a scaled desktop, real Windows).
+found, long command lines; command-line runs unchanged. The user tried
+it by hand on Linux (Wayland) and approved it. Not yet: real Windows.
 
 **Windows build** (2026-11-27): `tools/build_windows.sh` cross-builds
 the Windows package (MinGW, Unicorn backend). Under
